@@ -115,6 +115,7 @@ function openPacks(kind) {
 /* ---------- Çoktan seçmeli tur (çift ve grup) ---------- */
 let P = null;
 function startPair(kind, pack) {
+  S = null;
   track(`cift/${kind}/${pack.id}`, `${MODE_NAME[kind]}: ${pack.name}`);
   P = { kind, pack, seed: Math.floor(Math.random() * 46656), role: "A", a: [], b: [], pos: 0 };
   P.pool = pack.pool; P.qs = pickPair(pack, P.seed, P.pool);
@@ -124,7 +125,17 @@ function quizPlain() {
   const q = $("quiz"); q.classList.remove("storymode"); q.style.removeProperty("--sticker");
   $("qStory").hidden = true; $("qNext").hidden = true; $("qText").hidden = false; $("qOpts").hidden = false;
 }
+let pairTimer = null;
+function pairAdvance() {
+  clearTimeout(pairTimer);
+  if (!P || $("quiz").hidden) return;
+  const mine = P.role === "A" ? P.a : P.b;
+  if (mine[P.pos] == null) return;
+  if (++P.pos < PAIR_N) return renderPairQ();
+  P.kind === "F" ? groupDone() : P.role === "A" ? pairShare() : pairResult();
+}
 function renderPairQ() {
+  clearTimeout(pairTimer);
   quizPlain();
   const q = P.qs[P.pos], mine = P.role === "A" ? P.a : P.b, guess = P.kind === "T" && P.role === "B";
   $("quiz").classList.toggle("u", P.kind !== "T");
@@ -141,19 +152,23 @@ function renderPairQ() {
     const b = el("button", "opt" + (mine[P.pos] === i ? " on" : "")); b.type = "button";
     b.append(el("span", null, o.e), o.x);
     b.addEventListener("click", () => {
+      const changed = mine[P.pos] != null && mine[P.pos] !== i;
       mine[P.pos] = i;
       box.querySelectorAll(".opt").forEach(x => x.classList.remove("on")); b.classList.add("on");
-      setTimeout(() => {
-        if (!P || $("quiz").hidden) return;
-        if (++P.pos < PAIR_N) return renderPairQ();
-        P.kind === "F" ? groupDone() : P.role === "A" ? pairShare() : pairResult();
-      }, 260);
+      clearTimeout(pairTimer);
+      $("qNext").hidden = false; $("qNext").textContent = P.pos + 1 < PAIR_N ? "Sonraki soru ›" : "Bitir ›";
+      $("qWho").textContent = changed ? "Seçimin değişti." : "Yanlışsa başka bir şıkka dokun.";
+      pairTimer = setTimeout(pairAdvance, 1100);
     });
     box.append(b);
   });
-  $("qBack").hidden = P.pos === 0;
+  $("qBack").hidden = P.pos === 0; $("qBack").textContent = "‹ Önceki soru";
+  const answered = mine[P.pos] != null;
+  $("qNext").hidden = !answered; $("qNext").textContent = P.pos + 1 < PAIR_N ? "Sonraki soru ›" : "Bitir ›";
+  $("qNext").onclick = pairAdvance;
+  if (answered) $("qWho").textContent = "Bu soruyu cevapladın. Değiştirmek için başka bir şıkka dokun.";
 }
-$("qBack").addEventListener("click", () => { if (P && P.pos > 0) { P.pos--; renderPairQ(); } });
+$("qBack").addEventListener("click", () => { if (S && !$("quiz").hidden && $("quiz").classList.contains("storymode")) return storyBack(); if (P && P.pos > 0) { clearTimeout(pairTimer); P.pos--; renderPairQ(); } });
 $("qExit").addEventListener("click", goHome);
 
 function pairShare() {
@@ -343,6 +358,7 @@ const STORIES = STORY_RAW.trim().split(/\n\s*\n/).map(block => {
 });
 let S = null;
 function playStory(s) {
+  clearTimeout(pairTimer);
   track(`hikaye/${s.id}`, `Hikâye: ${s.title}`); S = { s, pos: 0, bold: 0, picks: [] }; P = null; showOnly("quiz"); renderScene(); }
 function renderScene() {
   const s = S.s, sc = s.scenes[S.pos], n = s.scenes.length, quiz = $("quiz");
@@ -351,21 +367,28 @@ function renderScene() {
   $("qCount").textContent = `Bölüm ${S.pos + 1} / ${n}`;
   $("qTrack").style.width = (S.pos / n * 100) + "%";
   $("qWho").textContent = S.pos === 0 ? s.intro : "";
-  $("qText").hidden = true; $("qBack").hidden = true; $("qNext").hidden = true;
+  $("qText").hidden = true; $("qNext").hidden = true;
+  $("qBack").hidden = S.pos === 0; $("qBack").textContent = "‹ Önceki bölüm";
   const st = $("qStory"); st.hidden = false; st.textContent = sc.text;
   const box = $("qOpts"); box.hidden = false; box.innerHTML = "";
   sc.opts.forEach((o, i) => {
     const b = el("button", "opt"); b.type = "button"; b.append(el("span", null, i === 0 ? "🅰️" : "🅱️"), o.label);
     b.addEventListener("click", () => {
-      S.picks.push(o); if (o.bold) S.bold++;
+      S.picks[S.pos] = o; S.bold = S.picks.filter(x => x && x.bold).length;
       box.hidden = true;
       st.append(el("span", "out", `${o.label}. ${o.out}`));
+      $("qBack").hidden = false; $("qBack").textContent = "↩ Seçimi değiştir";
       const nx = $("qNext"); nx.hidden = false; nx.textContent = S.pos + 1 < n ? "Devam et ›" : "Hikâyenin sonunu gör ›";
       nx.onclick = () => { if (++S.pos < n) renderScene(); else storyEnd(); };
     });
     box.append(b);
   });
   quiz.scrollTop = 0;
+}
+function storyBack() {
+  if (!S) return;
+  if (S.picks[S.pos]) { S.picks.length = S.pos; S.bold = S.picks.filter(x => x && x.bold).length; return renderScene(); }   // bu bölümdeki seçimi geri al
+  if (S.pos > 0) { S.pos--; S.picks.length = S.pos; S.bold = S.picks.filter(x => x && x.bold).length; renderScene(); }   // önceki bölüme dön
 }
 function storyEnd() {
   const s = S.s, n = s.scenes.length, idx = S.bold <= 1 ? 0 : S.bold === 2 ? 1 : 2, end = s.ends[idx];

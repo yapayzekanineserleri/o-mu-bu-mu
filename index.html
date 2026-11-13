@@ -8,7 +8,7 @@
 <title>O mu Bu mu Anketleri</title>
 <meta name="description" content="O mu, bu mu? Binlerce ikilem, çiftler ve aileler için kodla oynanan oyunlar, seçimlerine göre ilerleyen hikâyeler.">
 <meta name="theme-color" content="#0d0f14">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest?v=20261113c">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -124,14 +124,22 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .story.wide .votes { bottom: 18px; }
 .story.crowd .half.lead .votes b { color: var(--accent); }
 
-.sticker { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-1.5deg); width: 76%; max-width: 440px; background: #fff; color: #15171c; border-radius: 16px; overflow: hidden; box-shadow: 0 14px 34px rgba(0,0,0,.45); pointer-events: none; }
+.sticker { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 460px; background: #fff; color: #15171c; border-radius: 16px; overflow: hidden; box-shadow: 0 14px 34px rgba(0,0,0,.45); }
 .story.wide .sticker { width: 40%; }
 .sticker h2 { margin: 0; padding: 11px 12px 10px; background: var(--sticker); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: clamp(21px, 2.6vh, 28px); line-height: 1.02; letter-spacing: .03em; text-transform: uppercase; text-align: center; text-wrap: balance; }
 .sticker ol { list-style: none; margin: 0; padding: 9px; display: flex; flex-direction: column; gap: 7px; }
-.sticker li { display: flex; align-items: center; gap: 8px; background: #eceef2; border-radius: 9px; padding: 9px 11px; font-size: clamp(14px, 1.9vh, 17px); font-weight: 500; line-height: 1.25; transition: background .25s, color .25s; }
+.sticker li { display: block; }
+.sticker .choice { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; background: #eceef2; color: #15171c; border: 2px solid transparent; border-radius: 10px; padding: 12px 12px; min-height: 48px; font: 500 clamp(15px, 2vh, 17px)/1.25 var(--font-body); cursor: pointer; transition: background .2s, color .2s, border-color .2s, transform .1s; touch-action: manipulation; }
+.sticker .choice:hover { border-color: var(--sticker); }
+.sticker .choice:active { transform: scale(.98); }
+.sticker .choice:focus-visible { outline: 3px solid var(--sticker); outline-offset: 2px; }
+.sticker .choice .check { margin-left: auto; font-weight: 800; opacity: 0; }
 .sticker li .arrow { font-size: 12px; font-weight: 700; color: var(--sticker); flex: none; }
-.sticker li.picked { background: var(--sticker); color: #fff; }
+.sticker li.picked .choice { background: var(--sticker); color: #fff; }
+.sticker li.picked .choice .check { opacity: 1; }
 .sticker li.picked .arrow { color: #fff; }
+.half { touch-action: manipulation; }
+.story .sticker ol { padding: 10px; gap: 8px; }
 
 .handoff { position: absolute; inset: 0; z-index: 8; background: linear-gradient(160deg, #221a3a, #0d0f14 65%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
 .handoff h3 { font-family: var(--font-display); font-weight: 800; font-size: 46px; line-height: .95; text-transform: uppercase; margin: 0; }
@@ -261,7 +269,7 @@ button.ptile:hover { transform: translateY(-3px); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-<script src="data-tema.js"></script>
+<script src="data-tema.js?v=20261113c"></script>
 <script>
 /* Görünüm: sitenin varsayılanı yönetim panelindeki TEMA'dan gelir; ziyaretçi isterse kendi temasını seçer. */
 var LOOKS = {
@@ -393,13 +401,13 @@ function applyLook(name) {
   <div class="track"><i id="trackFill"></i></div>
   <div class="cardwrap">
     <div class="story" id="story">
-      <button class="half a" id="halfA" type="button"><span class="glyph" id="glyphA"></span><span class="tick">Seçildi</span><span class="votes"><b id="pctA"></b><small id="cntA"></small></span></button>
-      <button class="half b" id="halfB" type="button"><span class="glyph" id="glyphB"></span><span class="tick">Seçildi</span><span class="votes"><b id="pctB"></b><small id="cntB"></small></span></button>
-      <div class="sticker" aria-hidden="true">
+      <button class="half a" id="halfA" type="button" tabindex="-1"><span class="glyph" id="glyphA"></span><span class="tick">Seçildi</span><span class="votes"><b id="pctA"></b><small id="cntA"></small></span></button>
+      <button class="half b" id="halfB" type="button" tabindex="-1"><span class="glyph" id="glyphB"></span><span class="tick">Seçildi</span><span class="votes"><b id="pctB"></b><small id="cntB"></small></span></button>
+      <div class="sticker">
         <h2 id="qTitle"></h2>
         <ol>
-          <li id="liA"><span class="arrow" id="arA">▲</span><span id="textA"></span></li>
-          <li id="liB"><span class="arrow" id="arB">▼</span><span id="textB"></span></li>
+          <li id="liA"><button class="choice" type="button" id="choiceA"><span class="arrow" id="arA">▲</span><span id="textA"></span><span class="check" aria-hidden="true">✓</span></button></li>
+          <li id="liB"><button class="choice" type="button" id="choiceB"><span class="arrow" id="arB">▼</span><span id="textB"></span><span class="check" aria-hidden="true">✓</span></button></li>
         </ol>
       </div>
       <div class="handoff" id="handoff" hidden>
@@ -414,6 +422,7 @@ function applyLook(name) {
     <button class="pill" type="button" id="timerBtn" hidden>15 sn sayaç</button>
     <button class="pill" type="button" id="clearBtn" hidden>Oyları sıfırla</button>
     <button class="pill" type="button" id="fsBtn" hidden>Tam ekran</button>
+    <button class="pill" type="button" id="prevBtn" hidden>‹ Önceki soru</button>
     <button class="pill solid" type="button" id="nextBtn" hidden>Sonraki soru ›</button>
   </div>
 </section>
@@ -459,11 +468,11 @@ function applyLook(name) {
   </div>
 </section>
 
-<script src="data-anket.js"></script>
-<script src="data-hizli.js"></script>
-<script src="data-pair0.js"></script>
-<script src="data-paketler.js"></script>
-<script src="data-hikaye.js"></script>
+<script src="data-anket.js?v=20261113c"></script>
+<script src="data-hizli.js?v=20261113c"></script>
+<script src="data-pair0.js?v=20261113c"></script>
+<script src="data-paketler.js?v=20261113c"></script>
+<script src="data-hikaye.js?v=20261113c"></script>
 <script>
 const opt = s => { s = s.trim(); const j = s.indexOf(" "); return { e: s.slice(0, j), x: s.slice(j + 1) }; };
 const CATS = RAW.map(c => {
@@ -548,7 +557,7 @@ function start(cat, firstQ) {
   G = { cat, mode, deck, pos: 0, phase: 1, picks: [], picks2: [], times: [], votes: { a: 0, b: 0 }, locked: false, left: 0 };
   showOnly("play");
   $("handoff").hidden = true;
-  ["timerBtn", "clearBtn", "fsBtn", "nextBtn"].forEach(id => $(id).hidden = mode !== "crowd");
+  ["timerBtn", "clearBtn", "fsBtn"].forEach(id => $(id).hidden = mode !== "crowd");
   story.classList.toggle("crowd", mode === "crowd");
   layout();
   renderQ();
@@ -579,29 +588,54 @@ function renderQ() {
     half.style.background = halfBg(q, s);
     half.setAttribute("aria-label", q[s].x);
     half.classList.remove("picked", "lead"); $("li" + U).classList.remove("picked");
+    $("choice" + U).setAttribute("aria-label", (s === "a" ? "Üstteki: " : "Alttaki: ") + q[s].x);
   }
   story.classList.remove("voted");
+  const prev = curPick();
+  if (prev) markPick(prev);
   if (G.mode === "crowd") { renderVotes(); $("hint").innerHTML = "Her tıklama bir oy. Sohbet <b>1</b> ya da <b>2</b> yazsın, sen say. Klavye: <b>1</b> / <b>2</b> oy, <b>Boşluk</b> sonraki soru."; }
   else if (G.mode === "duel") $("hint").innerHTML = `<b>${G.phase}. oyuncu</b> seçiyor. Diğeri bakmasın.`;
-  else $("hint").innerHTML = "Üstteki ya da alttaki dünyaya dokun. Klavye: <b>↑</b> / <b>↓</b>";
+  else $("hint").innerHTML = "Bir şıkka dokun. Yanlış seçtiysen diğerine dokunman yeterli. Klavye: <b>↑</b> / <b>↓</b>, geri <b>←</b>";
+  if (prev && G.mode !== "crowd") $("hint").innerHTML = "Bu soruyu daha önce cevapladın. Değiştirmek için diğer şıkka dokun ya da sonraki soruya geç.";
+  navButtons();
+}
+function picksArr() { return G.mode === "duel" && G.phase === 2 ? G.picks2 : G.picks; }
+function curPick() { return G && G.mode !== "crowd" ? picksArr()[G.pos] : null; }
+function markPick(side) {
+  for (const s of ["a", "b"]) { const U = s.toUpperCase(), on = s === side; $("half" + U).classList.toggle("picked", on); $("li" + U).classList.toggle("picked", on); }
+  story.classList.add("voted");
+}
+function navButtons() {
+  if (!G) return;
+  const crowd = G.mode === "crowd";
+  $("prevBtn").hidden = crowd || G.pos === 0;
+  $("nextBtn").hidden = !crowd && !curPick();
+  $("nextBtn").textContent = !crowd && G.pos === G.deck.length - 1 ? (G.mode === "duel" && G.phase === 1 ? "Sırayı devret ›" : "Sonucu gör ›") : "Sonraki soru ›";
+}
+function prevQ() {
+  if (!G || G.mode === "crowd" || G.pos === 0) return;
+  clearTimeout(advance); G.pos--; renderQ();
 }
 
 function pick(side) {
-  if (!G || G.locked || !$("handoff").hidden) return;
-  const q = G.deck[G.pos], U = side.toUpperCase();
-  if (G.mode === "crowd") { G.votes[side]++; renderVotes(); return; }
-  G.locked = true;
-  $("half" + U).classList.add("picked"); $("li" + U).classList.add("picked"); story.classList.add("voted");
+  if (!G || !$("handoff").hidden) return;
+  const q = G.deck[G.pos];
+  if (G.mode === "crowd") { if (G.locked) return; G.votes[side]++; renderVotes(); return; }
+  const changed = curPick() && curPick() !== side;
+  clearTimeout(advance);
+  markPick(side);
   if (G.mode === "solo") {
     const ms = performance.now() - G.shown;
-    G.picks[G.pos] = side; G.times[G.pos] = ms;
+    if (!G.times[G.pos] || changed) G.times[G.pos] = ms;
+    G.picks[G.pos] = side;
     store.ans[q.id] = side; save();
-    $("hint").innerHTML = `<b>${secs(ms)}</b> içinde karar verdin.`;
-    advance = setTimeout(next, 900);
+    $("hint").innerHTML = changed ? "Seçimin değişti." : `<b>${secs(G.times[G.pos])}</b> içinde karar verdin. Yanlışsa diğerine dokun.`;
   } else {
-    (G.phase === 1 ? G.picks : G.picks2)[G.pos] = side;
-    advance = setTimeout(next, 450);
+    picksArr()[G.pos] = side;
+    $("hint").innerHTML = changed ? "Seçimin değişti." : "Yanlışsa diğer şıkka dokun.";
   }
+  navButtons();
+  advance = setTimeout(next, G.mode === "solo" ? 1300 : 1000);
 }
 function next() {
   if (!G) return;
@@ -638,7 +672,10 @@ function startTimer() {
 
 $("halfA").addEventListener("click", () => pick("a"));
 $("halfB").addEventListener("click", () => pick("b"));
-$("nextBtn").addEventListener("click", next);
+$("choiceA").addEventListener("click", e => { e.stopPropagation(); pick("a"); });
+$("choiceB").addEventListener("click", e => { e.stopPropagation(); pick("b"); });
+$("prevBtn").addEventListener("click", prevQ);
+$("nextBtn").addEventListener("click", () => { if (G && (G.mode === "crowd" || curPick())) next(); });
 $("clearBtn").addEventListener("click", () => { G.votes = { a: 0, b: 0 }; G.locked = false; renderVotes(); });
 $("timerBtn").addEventListener("click", () => tick ? (stopTimer(), $("pcount").className = "pcount", $("pcount").textContent = `${G.pos + 1} / ${G.deck.length}`) : startTimer());
 $("fsBtn").addEventListener("click", async () => {
@@ -660,6 +697,8 @@ document.addEventListener("keydown", e => {
   if (k === "1" || k === "ArrowUp" || (G.mode === "crowd" && k === "ArrowLeft")) { e.preventDefault(); pick("a"); }
   else if (k === "2" || k === "ArrowDown" || (G.mode === "crowd" && k === "ArrowRight")) { e.preventDefault(); pick("b"); }
   else if (G.mode === "crowd" && (k === " " || k === "Enter")) { e.preventDefault(); next(); }
+  else if (G.mode !== "crowd" && (k === "ArrowLeft" || k === "Backspace")) { e.preventDefault(); prevQ(); }
+  else if (G.mode !== "crowd" && (k === "ArrowRight" || k === "Enter") && curPick()) { e.preventDefault(); next(); }
 });
 
 /* ---------- Result ---------- */
@@ -725,6 +764,6 @@ $("toHome").addEventListener("click", goHome);
 
 
 </script>
-<script src="app2.js"></script>
+<script src="app2.js?v=20261113c"></script>
 </body>
 </html>
