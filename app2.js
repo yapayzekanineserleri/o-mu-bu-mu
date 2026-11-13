@@ -48,34 +48,52 @@ PACKS.forEach(p => {
   });
 });
 const PAIR_N = 12, B36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-function pickPair(pack, seed) {
+PACKS.forEach(p => { p.pools = (p.pools && p.pools.length ? p.pools : [p.pool]).filter(n => n >= PAIR_N && n <= p.qs.length); if (!p.pools.length) p.pools = [Math.min(p.qs.length, Math.max(PAIR_N, p.pool || p.qs.length))]; p.pool = p.pools[p.pools.length - 1]; });
+function pickPair(pack, seed, pool) {
+  pool = pool || pack.pool;
   let x = seed + 1;
   const r = () => { x = (Math.imul(x, 1103515245) + 12345) & 0x7fffffff; return x / 0x80000000; };
-  const idx = Array.from({ length: pack.pool }, (_, i) => i);
+  const idx = Array.from({ length: pool }, (_, i) => i);
   for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
   return idx.slice(0, PAIR_N).map(i => pack.qs[i]);
 }
 const chk = s => B36[[...s].reduce((a, c, i) => a + c.charCodeAt(0) * (i + 1), 0) % 36];
 /* T tahmin, U uyum, F grup cevabı (tek cevap seti) · S tahmin sonucu, V uyum sonucu (iki set) · G grup daveti */
-function encCode(kind, pack, seed, a, b) {
+/* Paket büyüdükçe havuz (pool) değişir. İlk havuzun kodları eski sağlamayla, sonrakiler havuz boyutunu da katarak üretilir;
+   böylece eski kodlar yanlış sorulara değil, kendi havuzlarına açılır. */
+const chkFor = (pack, body, pool) => {
+  const seen = [];
+  for (const n of pack.pools) {
+    let c = chk(body);
+    if (n !== pack.pools[0]) { let suf = "/" + n, k = 0; while (seen.includes(chk(body + suf)) && k++ < 36) suf += "/"; c = chk(body + suf); }   // eski havuzların sağlamasıyla çakışmasın
+    if (n === pool) return c;
+    seen.push(c);
+  }
+  return chk(body + "/" + pool);
+};
+function encCode(kind, pack, seed, a, b, pool) {
+  pool = pool || pack.pool;
   const body = kind + pack.ch + seed.toString(36).toUpperCase().padStart(3, "0") + (a ? a.join("") : "") + (b ? b.join("") : "");
-  return body + chk(body);
+  return body + chkFor(pack, body, pool);
 }
 function decCode(raw) {
   let s = String(raw || "");
   const h = s.lastIndexOf("#"); if (h > -1) s = s.slice(h + 1);
   s = s.replace(/^kod-/i, "").toUpperCase().replace(/[^0-9A-Z]/g, "");
   const L = s.length, kind = s[0];
-  if (L < 6 || chk(s.slice(0, -1)) !== s.slice(-1)) return null;
+  if (L < 6) return null;
+  const body = s.slice(0, -1), last = s.slice(-1);
   let pack, rest;
-  if ((L === 17 && "TU".includes(kind)) || (L === 29 && "SV".includes(kind))) { pack = PACKS[0]; rest = s.slice(1, -1); }   // ilk sürümün kodları
+  if ((L === 17 && "TU".includes(kind)) || (L === 29 && "SV".includes(kind))) { pack = PACKS[0]; rest = s.slice(1, -1); if (chk(body) !== last) return null; }   // ilk sürümün kodları
   else if ((L === 18 && "TUF".includes(kind)) || (L === 30 && "SV".includes(kind)) || (L === 6 && kind === "G")) { pack = PACKS.find(p => p.ch === s[1]); rest = s.slice(2, -1); }
   else return null;
   if (!pack) return null;
+  const pool = L === 17 || L === 29 ? pack.pools[0] : pack.pools.slice().reverse().find(n => chkFor(pack, body, n) === last);
+  if (!pool) return null;
   const seed = parseInt(rest.slice(0, 3), 36); if (isNaN(seed)) return null;
-  const qs = pickPair(pack, seed), d = rest.slice(3).split("").map(c => B36.indexOf(c));
+  const qs = pickPair(pack, seed, pool), d = rest.slice(3).split("").map(c => B36.indexOf(c));
   if (d.some((v, i) => v < 0 || v >= qs[i % PAIR_N].o.length)) return null;
-  return { kind, pack, seed, qs, a: d.slice(0, PAIR_N), b: d.length > PAIR_N ? d.slice(PAIR_N) : null };
+  return { kind, pack, seed, pool, qs, a: d.slice(0, PAIR_N), b: d.length > PAIR_N ? d.slice(PAIR_N) : null };
 }
 const fmtCode = c => c.match(/.{1,4}/g).join("-");
 const CODE_RE = /[0-9A-Za-z]{4}(?:-[0-9A-Za-z]{1,4}){1,7}/g;
@@ -98,7 +116,7 @@ function openPacks(kind) {
 let P = null;
 function startPair(kind, pack) {
   P = { kind, pack, seed: Math.floor(Math.random() * 46656), role: "A", a: [], b: [], pos: 0 };
-  P.qs = pickPair(pack, P.seed);
+  P.pool = pack.pool; P.qs = pickPair(pack, P.seed, P.pool);
   showOnly("quiz"); renderPairQ();
 }
 function quizPlain() {
@@ -138,7 +156,7 @@ $("qBack").addEventListener("click", () => { if (P && P.pos > 0) { P.pos--; rend
 $("qExit").addEventListener("click", goHome);
 
 function pairShare() {
-  const code = fmtCode(encCode(P.kind, P.pack, P.seed, P.a)), msg = `O mu, bu mu? “${MODE_NAME[P.kind]}” oyununa davetlisin (${P.pack.name}). Siteyi aç, “Kodun mu var?” kutusuna yapıştır: ${code}`;
+  const code = fmtCode(encCode(P.kind, P.pack, P.seed, P.a, null, P.pool)), msg = `O mu, bu mu? “${MODE_NAME[P.kind]}” oyununa davetlisin (${P.pack.name}). Siteyi aç, “Kodun mu var?” kutusuna yapıştır: ${code}`;
   setHash("kod-" + code.toLowerCase());
   const acts = el("div", "ractions");
   acts.append(
@@ -161,7 +179,7 @@ function pairShare() {
 
 function pairResult() {
   const n = PAIR_N, same = P.qs.filter((q, i) => P.a[i] === P.b[i]).length, pct = Math.round(same / n * 100), tahmin = P.kind === "T";
-  const code = fmtCode(encCode(tahmin ? "S" : "V", P.pack, P.seed, P.a, P.b));
+  const code = fmtCode(encCode(tahmin ? "S" : "V", P.pack, P.seed, P.a, P.b, P.pool));
   showOnly("result"); $("result").scrollTop = 0;
   $("result").style.setProperty("--sticker", tahmin ? "#ff6b9d" : "#9775fa");
   const facts = $("rFacts"), rows = $("rRows"); facts.innerHTML = ""; rows.innerHTML = "";
@@ -187,7 +205,7 @@ function pairResult() {
   });
   $("rExtra").hidden = false; $("rCode").textContent = code;
   setHash("kod-" + code.toLowerCase());
-  lastText = `O mu, bu mu? ${MODE_NAME[P.kind]} (${P.pack.name}): ${big}, ${title}.\nSonucu görmek için bu kodu sitedeki “Kodun mu var?” kutusuna yapıştır: ${code}\n@yapayzekanineserleri`;
+  lastText = `O mu, bu mu? ${MODE_NAME[P.kind]} (${P.pack.name}): ${big}, ${title}.\nSonucu görmek için bu kodu sitedeki “Kodun mu var?” kutusuna yapıştır: ${code}\n${HANDLE()}`;
   const kind = P.kind;
   $("again").textContent = "Yeni oyun ›"; againFn = () => openPacks(kind);
   storyCard({ kicker: `${MODE_NAME[kind]} · ${P.pack.name}`, title: big, sub: title, h: tahmin ? 338 : 262 });
@@ -195,22 +213,23 @@ function pairResult() {
 
 /* ---------- Aile ve grup anketi ---------- */
 function newGroup(pack) {
-  const seed = Math.floor(Math.random() * 46656), code = fmtCode(encCode("G", pack, seed));
+  const seed = Math.floor(Math.random() * 46656), code = fmtCode(encCode("G", pack, seed, null, null, pack.pool));
   const msg = `O mu, bu mu? “${pack.name}” anketini başlattım. Siteyi aç, “Kodun mu var?” kutusuna şunu yapıştır: ${code}\nBitince çıkan cevap satırını bu gruba at.`;
   const acts = el("div", "ractions");
-  acts.append(btn("Davet mesajını kopyala", "pill solid", b => copyTo(b, msg)), btn("Ben de cevaplayayım ›", "pill", () => nameStep(pack, seed)), btn("Ana sayfa", "pill", goHome));
+  acts.append(btn("Davet mesajını kopyala", "pill solid", b => copyTo(b, msg)), btn("Ben de cevaplayayım ›", "pill", () => nameStep(pack, seed, pack.pool)), btn("Ana sayfa", "pill", goHome));
   const steps = el("ul", "rows");
   ["Davet mesajını aile ya da arkadaş grubuna gönder.", "Herkes kodu girip adını yazar, 12 soruyu cevaplar.", "Herkes kendi cevap satırını gruba atar.", "Biri gruptaki bütün cevap satırlarını kopyalayıp “Kodun mu var?” kutusuna yapıştırır: ortak sonuç çıkar."]
     .forEach((t, i) => { const li = el("li"); li.append(el("span", "m", String(i + 1)), el("span", null, t)); steps.append(li); });
   panel(el("p", "eyebrow", `Aile ve grup anketi · ${pack.name}`), el("h2", null, "Davet kodu"), el("div", "codebox", code), acts, steps);
 }
-function nameStep(pack, seed) {
+function nameStep(pack, seed, pool) {
+  pool = pool || pack.pool;
   const input = el("input", "field"); input.type = "text"; input.maxLength = 16; input.placeholder = "Örneğin: Ayşe"; input.id = "nameField"; input.setAttribute("aria-label", "Adın");
   const err = el("p", "eyebrow", "");
   const go = () => {
     const name = input.value.replace(/[:👉\]\[\n]/g, "").trim();
     if (!name) { err.textContent = "Sonuçta kimin ne dediği görünsün diye bir ad yaz."; input.focus(); return; }
-    P = { kind: "F", pack, seed, qs: pickPair(pack, seed), role: "A", a: [], b: [], pos: 0, name };
+    P = { kind: "F", pack, seed, pool, qs: pickPair(pack, seed, pool), role: "A", a: [], b: [], pos: 0, name };
     showOnly("quiz"); renderPairQ();
   };
   input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
@@ -219,7 +238,7 @@ function nameStep(pack, seed) {
   setTimeout(() => input.focus(), 50);
 }
 function groupDone() {
-  const code = fmtCode(encCode("F", P.pack, P.seed, P.a)), line = `${P.name} 👉 ${code}`, key = P.pack.ch + P.seed;
+  const code = fmtCode(encCode("F", P.pack, P.seed, P.a, null, P.pool)), line = `${P.name} 👉 ${code}`, key = P.pack.ch + P.seed + "/" + P.pool;
   const mine = lsGet("omubumu-grp", {}); mine[key] = line; lsSet("omubumu-grp", mine);
   const acts = el("div", "ractions");
   acts.append(btn("Cevap satırımı kopyala", "pill solid", b => copyTo(b, line)), btn("Ana sayfa", "pill", goHome));
@@ -249,15 +268,15 @@ function joinAny(text) {
   const fs = found.filter(d => d.kind === "F");
   if (fs.length) return mergeGroup(fs);
   const d = found[0];
-  if (d.kind === "G") { nameStep(d.pack, d.seed); return null; }
-  if (d.b) { P = { kind: d.kind === "S" ? "T" : "U", pack: d.pack, seed: d.seed, qs: d.qs, a: d.a, b: d.b, role: "V" }; pairResult(); return null; }
-  P = { kind: d.kind, pack: d.pack, seed: d.seed, qs: d.qs, role: "B", a: d.a, b: [], pos: 0 };
+  if (d.kind === "G") { nameStep(d.pack, d.seed, d.pool); return null; }
+  if (d.b) { P = { kind: d.kind === "S" ? "T" : "U", pack: d.pack, seed: d.seed, pool: d.pool, qs: d.qs, a: d.a, b: d.b, role: "V" }; pairResult(); return null; }
+  P = { kind: d.kind, pack: d.pack, seed: d.seed, pool: d.pool, qs: d.qs, role: "B", a: d.a, b: [], pos: 0 };
   showOnly("quiz"); renderPairQ();
   return null;
 }
 function mergeGroup(fs) {
   const groups = {};
-  fs.forEach(d => { (groups[d.pack.ch + d.seed] = groups[d.pack.ch + d.seed] || []).push(d); });
+  fs.forEach(d => { const k = d.pack.ch + d.seed + "/" + d.pool; (groups[k] = groups[k] || []).push(d); });
   const key = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length)[0], list = groups[key];
   const own = lsGet("omubumu-grp", {})[key];
   if (own) { const o = parseCodes(own)[0]; if (o && !list.some(d => d.a.join("") === o.a.join("") && d.name === o.name)) list.push(o); }
@@ -304,7 +323,7 @@ function groupResult(pack, qs, people) {
   $("rTitle").textContent = `%${pct} hemfikir`;
   $("rDesc").textContent = `${title}. ${N} sorunun ${unan} tanesinde herkes aynı cevabı verdi.`;
   $("rExtra").hidden = true;
-  lastText = `O mu, bu mu? ${pack.name} anketi (${n} kişi): %${pct} hemfikir, ${title}. En uyumlu ikili: ${best.x.name} ve ${best.y.name}.\n@yapayzekanineserleri`;
+  lastText = `O mu, bu mu? ${pack.name} anketi (${n} kişi): %${pct} hemfikir, ${title}. En uyumlu ikili: ${best.x.name} ve ${best.y.name}.\n${HANDLE()}`;
   $("again").textContent = "Yeni anket ›"; againFn = () => openPacks("G");
   storyCard({ kicker: `${pack.name} · ${n} kişi`, title: `%${pct} hemfikir`, sub: `${title}. En uyumlu ikili: ${best.x.name} ve ${best.y.name}.`, h: 24 });
 }
@@ -358,7 +377,7 @@ function storyEnd() {
   facts.append(fact("Gözü kara seçim", `${S.bold} / ${n}`), fact("Gördüğün sonlar", `${seen.length} / ${s.ends.length}`, seen.length < s.ends.length ? "Farklı seçimlerle diğer sonları aç" : "Bu hikâyenin bütün sonlarını gördün"));
   S.picks.forEach((o, i) => { const li = el("li"), t = el("span"); t.append(el("span", "q", `Bölüm ${i + 1}`), o.label); li.append(el("span", "m", o.bold ? "🔥" : "🛡️"), t); rows.append(li); });
   $("rExtra").hidden = true;
-  lastText = `O mu, bu mu? “${s.title}” hikâyesinde sonum: ${end.t}.\n@yapayzekanineserleri`;
+  lastText = `O mu, bu mu? “${s.title}” hikâyesinde sonum: ${end.t}.\n${HANDLE()}`;
   $("again").textContent = "Farklı seçimlerle oyna ›"; againFn = () => playStory(s);
   storyCard({ kicker: `${s.em} ${s.title}`, title: end.t, sub: end.x, h: s.h });
 }
@@ -383,14 +402,15 @@ function storyCard(o) {
         return y;
       };
       x.textBaseline = "top";
-      x.fillStyle = "#ffd23f"; x.font = '800 72px "Barlow Condensed", "Arial Narrow", sans-serif'; x.fillText("O MU, BU MU?", 90, 150);
-      x.fillStyle = "rgba(255,255,255,.85)"; x.font = '500 46px Onest, system-ui, sans-serif';
+      const T = typeof TEMA === "object" ? TEMA : {}, FD = `"${T.fontBaslik || "Barlow Condensed"}", "Arial Narrow", sans-serif`, FB = `"${T.fontMetin || "Onest"}", system-ui, sans-serif`;
+      x.fillStyle = T.renkVurgu || "#ffd23f"; x.font = "800 72px " + FD; x.fillText(`${T.baslik1 || "O mu,"} ${T.baslik2 || "bu mu?"}`.toLocaleUpperCase("tr"), 90, 150);
+      x.fillStyle = "rgba(255,255,255,.85)"; x.font = "500 46px " + FB;
       let y = wrap(o.kicker, 560, 60, 2);
-      x.fillStyle = "#fff"; x.font = '800 156px "Barlow Condensed", "Arial Narrow", sans-serif';
+      x.fillStyle = "#fff"; x.font = "800 156px " + FD;
       y = wrap(String(o.title).toLocaleUpperCase("tr"), y + 30, 150, 4);
-      x.fillStyle = "rgba(255,255,255,.92)"; x.font = '500 50px Onest, system-ui, sans-serif';
+      x.fillStyle = "rgba(255,255,255,.92)"; x.font = "500 50px " + FB;
       wrap(o.sub, y + 50, 70, 8);
-      x.fillStyle = "#fff"; x.font = '700 46px Onest, system-ui, sans-serif'; x.fillText("@yapayzekanineserleri", 90, 1740);
+      x.fillStyle = "#fff"; x.font = "700 46px " + FB; x.fillText(HANDLE(), 90, 1740);
       const url = c.toDataURL("image/png"), out = el("div", "card-out"), img = el("img"), side = el("div");
       img.src = url; img.alt = "Hikâye boyutunda sonuç görseli";
       side.append(el("small", null, "Hikâyende paylaşmak için görsele basılı tut ve kaydet."));
@@ -398,12 +418,20 @@ function storyCard(o) {
       out.append(img, side); box.innerHTML = ""; box.append(out);
     } catch (e) {}
   };
-  const f = document.fonts && document.fonts.load ? Promise.all([document.fonts.load('800 156px "Barlow Condensed"'), document.fonts.load("500 50px Onest")]) : Promise.resolve();
+  const f = document.fonts && document.fonts.load ? Promise.all([document.fonts.load(`800 156px "${(typeof TEMA === "object" && TEMA.fontBaslik) || "Barlow Condensed"}"`), document.fonts.load(`500 50px "${(typeof TEMA === "object" && TEMA.fontMetin) || "Onest"}"`)]) : Promise.resolve();
   f.then(draw, draw);
 }
 
 /* ---------- Ana sayfanın ek bölümleri ---------- */
+function applyTema() {
+  if (typeof TEMA !== "object") return;
+  const set = (id, v) => { if (v) $(id).textContent = v; };
+  set("brandT1", TEMA.baslik1); set("brandT2", TEMA.baslik2); set("brandHandle", TEMA.hesap); set("brandSub", TEMA.altyazi);
+  document.querySelectorAll(".roundN").forEach(e => e.textContent = ROUND);
+  const n = $("notice"); n.hidden = !TEMA.duyuru; n.textContent = TEMA.duyuru || "";
+}
 function renderHomeExtra() {
+  applyTema();
   const quick = $("quick"); quick.innerHTML = "";
   QCATS.forEach(c => {
     const n = c.qs.filter(q => store.ans[q.id]).length;
@@ -415,7 +443,7 @@ function renderHomeExtra() {
   $("quickCount").textContent = `${QCATS.length} liste, ${QALL.length} ikilem`;
   $("storyCount").textContent = `${STORIES.length} hikâye, her birinde 3 farklı son`;
   $("total").textContent = `${done} / ${total} ikilem cevaplandı`;
-  $("leadCount").textContent = `${total} ikilem, ${PACKS.reduce((s, p) => s + p.qs.length, 0)} sorulu ${PACKS.length} oyun paketi, ${STORIES.length} seçimli hikâye.`;
+  $("leadCount").textContent = (typeof TEMA === "object" && TEMA.giris) ? TEMA.giris + " " : `${total} ikilem, ${PACKS.reduce((s, p) => s + p.qs.length, 0)} sorulu ${PACKS.length} oyun paketi, ${STORIES.length} seçimli hikâye.`;
 }
 
 $("pairT").addEventListener("click", () => openPacks("T"));

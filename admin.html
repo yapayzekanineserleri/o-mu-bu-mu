@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Yönetim Paneli · O mu Bu mu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a quiet workbench. Left rail of sections, a working column of editable cards,
+   and one sticky save bar at the bottom that turns yellow when there is something to publish. */
+:root {
+  color-scheme: dark;
+  --bg: #0d0f14;
+  --panel: #171a22;
+  --panel2: #1e222c;
+  --ink: #f4f1ea;
+  --muted: #9aa0ad;
+  --line: #2a2f3b;
+  --accent: #ffd23f;
+  --ok: #51cf66;
+  --bad: #ff6b6b;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-body); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: .01em; margin: 0; line-height: 1; }
+h1 { font-size: 34px; }
+h2 { font-size: 30px; }
+h3 { font-size: 21px; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+.top { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.top h1 span { color: var(--accent); }
+.top .sp { flex: 1; }
+.shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: calc(100vh - 64px); }
+nav { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+nav button { text-align: left; background: none; border: 0; border-radius: 10px; padding: 10px 12px; color: var(--muted); font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+nav button:hover { background: var(--panel); color: var(--ink); }
+nav button[aria-current="true"] { background: var(--panel); color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
+nav button small { font-variant-numeric: tabular-nums; }
+main { padding: 20px 24px 120px; min-width: 0; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.head p { margin: 6px 0 0; max-width: 70ch; }
+
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 9px 14px; font-weight: 500; }
+.btn:hover { border-color: var(--muted); }
+.btn.pri { background: var(--accent); color: #15130a; border-color: transparent; font-weight: 700; }
+.btn.danger { color: var(--bad); }
+.btn.sm { padding: 5px 10px; font-size: 13px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.card.sel { border-color: var(--accent); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.tile { text-align: left; border: 0; border-radius: 14px; padding: 12px; min-height: 92px; color: #fff; display: flex; flex-direction: column; gap: 4px; }
+.tile b { font-family: var(--font-display); font-size: 21px; text-transform: uppercase; line-height: 1; margin-top: auto; }
+.tile small { opacity: .85; font-size: 12px; }
+.tile .em { font-size: 26px; line-height: 1; }
+.tile.add { background: transparent; border: 1px dashed var(--muted); color: var(--muted); align-items: center; justify-content: center; }
+
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+input.i, select.i, textarea.i { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; color: var(--ink); min-width: 0; width: 100%; }
+textarea.i { resize: vertical; min-height: 64px; }
+input.em { width: 56px; text-align: center; font-size: 18px; padding: 6px; }
+input[type="color"].i { padding: 2px; height: 38px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+
+.qrow { display: grid; grid-template-columns: 28px minmax(110px, .8fr) 56px minmax(140px, 1fr) 56px minmax(140px, 1fr) 30px; gap: 6px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.qrow .n { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.prow { display: grid; grid-template-columns: 28px minmax(160px, 1fr) minmax(160px, 1fr) minmax(220px, 1.3fr) 30px; gap: 6px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.prow.locked .n::after { content: " 🔒"; }
+.irow { display: grid; grid-template-columns: 56px minmax(0, 1fr) 30px; gap: 6px; align-items: center; }
+.x { background: none; border: 0; color: var(--muted); font-size: 18px; padding: 2px; }
+.x:hover { color: var(--bad); }
+.x:disabled { visibility: hidden; }
+.scene { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--panel2); }
+.opt2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 6px; align-items: start; }
+.opt2 .bold { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; padding-top: 8px; }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+.note.bad { border-color: var(--bad); }
+
+.savebar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 20px; background: rgba(13,15,20,.92); backdrop-filter: blur(8px); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; z-index: 5; }
+.savebar.dirty { border-top-color: var(--accent); }
+.savebar .msg { flex: 1; min-width: 200px; font-size: 14px; }
+.savebar .msg.ok { color: var(--ok); }
+.savebar .msg.bad { color: var(--bad); }
+
+.login { max-width: 640px; margin: 48px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 16px; }
+.login ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; }
+  nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  nav button { white-space: nowrap; }
+  main { padding: 16px 14px 140px; }
+  .qrow { grid-template-columns: 22px 1fr 1fr 26px; }
+  .qrow .t { grid-column: 2 / 4; }
+  .qrow .ae, .qrow .be { width: 100%; }
+  .prow { grid-template-columns: 22px 1fr 26px; }
+  .prow > :nth-child(3), .prow > :nth-child(4) { grid-column: 2 / 3; }
+  .opt2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<section class="login" id="login">
+  <h1>O mu, bu mu? <span style="color:var(--accent)">Yönetim</span></h1>
+  <p>Bu panelde soruları, konuları, çift ve aile paketlerini, hikâyeleri ve sitenin görünümünü kod yazmadan değiştirirsin. Kaydettiğin her değişiklik GitHub'daki sitene gider, site 1-2 dakika içinde güncellenir.</p>
+  <div class="card">
+    <h3>İlk kez giriyorsan</h3>
+    <ol class="small">
+      <li>GitHub'da <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">yeni bir erişim anahtarı oluşturma sayfasını</a> aç.</li>
+      <li>İsim olarak “anket paneli” yaz, süreyi istediğin kadar seç.</li>
+      <li><b>Repository access</b> bölümünde “Only select repositories” deyip <b>o-mu-bu-mu</b> deposunu seç.</li>
+      <li><b>Permissions</b> içinde <b>Contents</b> iznini <b>Read and write</b> yap.</li>
+      <li>“Generate token” de, çıkan anahtarı kopyalayıp aşağıya yapıştır.</li>
+    </ol>
+    <p class="small muted">Anahtar yalnızca bu tarayıcıda saklanır. Panel adresini bilen biri anahtar olmadan hiçbir şeyi değiştiremez.</p>
+  </div>
+  <label class="f">GitHub erişim anahtarı<input class="i" id="tokenIn" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+  <details class="small">
+    <summary class="muted">Depo ayarları</summary>
+    <div class="fields" style="margin-top:8px">
+      <label class="f">Hesap<input class="i" id="ownerIn" value="yapayzekanineserleri"></label>
+      <label class="f">Depo<input class="i" id="repoIn" value="o-mu-bu-mu"></label>
+      <label class="f">Dal<input class="i" id="branchIn" value="main"></label>
+    </div>
+  </details>
+  <div class="row"><button class="btn pri" id="loginBtn" type="button">Giriş yap</button><span class="small" id="loginMsg"></span></div>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <h1>O mu, bu mu? <span>Yönetim</span></h1>
+    <span class="sp"></span>
+    <a class="btn" id="siteLink" href="./" target="_blank" rel="noopener">Siteyi aç ↗</a>
+    <button class="btn" id="backupBtn" type="button">Yedek indir</button>
+    <button class="btn" id="logoutBtn" type="button">Çıkış</button>
+  </header>
+  <div class="shell">
+    <nav id="nav"></nav>
+    <main id="main"></main>
+  </div>
+  <div class="savebar" id="savebar">
+    <span class="msg" id="saveMsg">Değişiklik yok.</span>
+    <button class="btn" id="undoBtn" type="button" disabled>Değişiklikleri geri al</button>
+    <button class="btn pri" id="saveBtn" type="button" disabled>Siteye kaydet</button>
+  </div>
+</div>
+
+<script>
+/* ---------- Durum ---------- */
+const $ = id => document.getElementById(id);
+const LS = "omubumu-admin";
+let CFG = { token: "", owner: "yapayzekanineserleri", repo: "o-mu-bu-mu", branch: "main" };
+try { Object.assign(CFG, JSON.parse(localStorage.getItem(LS)) || {}); } catch (e) {}
+const FILES = ["data-anket.js", "data-hizli.js", "data-pair0.js", "data-paketler.js", "data-hikaye.js", "data-tema.js"];
+let SRC = {}, SHA = {}, D = null, ORIG = "", view = { tab: "tema", sel: null };
+
+const DEFAULT_TEMA = { baslik1: "O mu,", baslik2: "bu mu?", hesap: "@yapayzekanineserleri", altyazi: "anketleri", giris: "", duyuru: "", renkVurgu: "#ffd23f", renkArka: "#0d0f14", renkPanel: "#171a22", renkYazi: "#f4f1ea", renkSoluk: "#9aa0ad", renkCizgi: "#2a2f3b", fontBaslik: "Barlow Condensed", fontMetin: "Onest", turSayisi: 10 };
+const FONTS_D = ["Barlow Condensed", "Anton", "Bebas Neue", "Oswald", "Archivo Black", "Alfa Slab One", "Righteous", "Bowlby One", "Rubik Mono One", "Bungee"];
+const FONTS_B = ["Onest", "Inter", "Nunito", "Rubik", "Manrope", "Work Sans", "Source Sans 3", "Mulish", "Lexend", "Figtree"];
+const B36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/* ---------- GitHub ---------- */
+const b64e = s => { const b = new TextEncoder().encode(s); let r = ""; for (let i = 0; i < b.length; i += 0x8000) r += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(r); };
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), c => c.charCodeAt(0)));
+async function gh(path, opt = {}) {
+  const r = await fetch(`https://api.github.com/repos/${CFG.owner}/${CFG.repo}/${path}`, {
+    ...opt, cache: "no-store",
+    headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + CFG.token, "X-GitHub-Api-Version": "2022-11-28", ...(opt.headers || {}) }
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    const why = r.status === 401 ? "Anahtar geçersiz ya da süresi dolmuş." : r.status === 403 ? "Anahtarın bu depoya yazma izni yok (Contents: Read and write olmalı)." : r.status === 404 ? "Depo ya da dosya bulunamadı; depo ayarlarını kontrol et." : r.status === 409 ? "Bu arada başka bir değişiklik kaydedilmiş. Sayfayı yenileyip tekrar dene." : `GitHub hatası (${r.status}).`;
+    const e = new Error(why); e.status = r.status; e.detail = t; throw e;
+  }
+  return r.status === 204 ? null : r.json();
+}
+async function loadAll() {
+  for (const f of FILES) {
+    try {
+      const j = await gh(`contents/${f}?ref=${encodeURIComponent(CFG.branch)}`);
+      SRC[f] = b64d(j.content); SHA[f] = j.sha;
+    } catch (e) {
+      if (e.status === 404 && f === "data-tema.js") { SRC[f] = ""; SHA[f] = null; continue; }
+      throw e;
+    }
+  }
+  const all = FILES.map(f => SRC[f]).join("\n;\n");
+  const g = new Function(all + `
+;return { RAW: typeof RAW !== "undefined" ? RAW : [], MORE: typeof MORE !== "undefined" ? MORE : {}, QUICK: typeof QUICK !== "undefined" ? QUICK : [],
+  PACKS: typeof PACKS !== "undefined" ? PACKS : [], STORY_RAW: typeof STORY_RAW !== "undefined" ? STORY_RAW : "", TEMA: typeof TEMA !== "undefined" ? TEMA : {} };`)();
+  D = toModel(g);
+  ORIG = JSON.stringify(D);
+}
+
+/* ---------- Veri <-> düzenleme modeli ---------- */
+const splitOpts = s => String(s || "").split(/,(?! )/).map(x => x.trim()).filter(Boolean).map(o => { const j = o.indexOf(" "); return j < 0 ? { e: "🔹", x: o } : { e: o.slice(0, j), x: o.slice(j + 1) }; });
+function parseStories(raw) {
+  return String(raw || "").trim().split(/\n\s*\n/).filter(b => b.trim().startsWith("#")).map(block => {
+    const L = block.trim().split("\n"), hd = L[0].slice(2).split(" | ");
+    const s = { id: hd[0], title: hd[1] || "", em: hd[2] || "📖", h: +hd[3] || 0, intro: hd[4] || "", scenes: [], ends: [] };
+    L.slice(1).forEach(l => {
+      if (l[0] === ">") s.scenes.push({ text: l.slice(2), opts: [] });
+      else if (l[0] === "!" || l[0] === "-") { const p = l.slice(2).split(" => "); s.scenes[s.scenes.length - 1].opts.push({ label: p[0], out: p[1] || "", bold: l[0] === "!" }); }
+      else if (l[0] === "=") { const p = l.slice(2).split(" :: "); s.ends.push({ t: p[0], x: p[1] || "" }); }
+    });
+    return s;
+  });
+}
+function toModel(g) {
+  const cats = g.RAW.map(c => {
+    const lines = (c.q + "\n" + (g.MORE[c.id] || "")).split("\n").map(x => x.trim()).filter(Boolean);
+    return {
+      id: c.id, name: c.name, em: c.em, h: c.h, heads: (c.heads || []).join("\n"),
+      qs: lines.map(line => {
+        let t = "", body = line; const k = body.indexOf(" :: "); if (k > -1) { t = body.slice(0, k); body = body.slice(k + 4); }
+        const p = body.split(" / "), a = splitOpts(p[0])[0] || { e: "🔹", x: "" }, b = splitOpts(p[1] || "")[0] || { e: "🔹", x: "" };
+        return { t, ae: a.e, ax: a.x, be: b.e, bx: b.x };
+      })
+    };
+  });
+  const quick = g.QUICK.map(c => ({ id: c.id, name: c.name, em: c.em, h: c.h, head: c.head, items: splitOpts(c.items) }));
+  const packs = g.PACKS.map(p => {
+    const rows = String(p.raw || "").trim().split("\n").filter(Boolean).map(l => {
+      const a = l.split("|");
+      return { s: a[0], g: a.length === 3 ? a[1] : "", o: a.length === 1 ? "" : splitOpts(a[a.length - 1]).map(o => o.e + " " + o.x).join("\n") };
+    });
+    const pools = (p.pools && p.pools.length ? p.pools : [p.pool || rows.length]).slice();
+    return { id: p.id, ch: p.ch, name: p.name, em: p.em, h: p.h, modes: p.modes, fam: !!p.fam, pools, shared: p.opts ? splitOpts(p.opts).map(o => o.e + " " + o.x).join("\n") : "", hasG: rows.some(r => r.g), rows };
+  });
+  return { cats, quick, packs, stories: parseStories(g.STORY_RAW), tema: Object.assign({}, DEFAULT_TEMA, g.TEMA || {}) };
+}
+/* Metinleri ayraçlarla çakışmayacak hâle getirir */
+const clean = s => String(s == null ? "" : s).replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+const cleanEm = s => (clean(s).split(" ")[0] || "🔹");
+const noSep = (s, seps) => { s = clean(s); seps.forEach(([a, b]) => { while (s.includes(a)) s = s.split(a).join(b); }); return s; };
+const optText = s => noSep(s, [[" / ", " - "], [" :: ", ": "], ["|", "/"]]).replace(/,(?! )/g, ", ").replace(/,\s*$/, "");
+const optLines = txt => String(txt || "").split("\n").map(l => clean(l)).filter(Boolean).map(l => { const j = l.indexOf(" "); return j < 0 ? "🔹 " + optText(l) : cleanEm(l.slice(0, j)) + " " + optText(l.slice(j + 1)); });
+const J = v => JSON.stringify(v, null, 1);
+
+function serialize() {
+  const out = {};
+  const RAW = D.cats.map(c => ({
+    id: c.id, name: clean(c.name) || "Konu", em: cleanEm(c.em), h: +c.h || 0,
+    heads: String(c.heads || "").split("\n").map(clean).filter(Boolean).concat(String(c.heads || "").trim() ? [] : ["Hangisini seçerdin?"]),
+    q: c.qs.filter(q => clean(q.ax) && clean(q.bx)).map(q => (clean(q.t) ? noSep(q.t, [[" :: ", ": "]]) + " :: " : "") + cleanEm(q.ae) + " " + optText(q.ax) + " / " + cleanEm(q.be) + " " + optText(q.bx)).join("\n")
+  }));
+  out["data-anket.js"] = "/* Konu anketleri. Yönetim panelinden düzenlenir. Satır: [Başlık :: ]emoji seçenek / emoji seçenek */\nconst RAW = " + J(RAW) + ";\nconst MORE = {};\n";
+  const QUICK = D.quick.map(c => ({ id: c.id, name: clean(c.name) || "Liste", em: cleanEm(c.em), h: +c.h || 0, head: clean(c.head) || "Hangisi?", items: c.items.filter(i => clean(i.x)).map(i => cleanEm(i.e) + " " + optText(i.x)).join(",") }));
+  out["data-hizli.js"] = "/* Hızlı seçim listeleri. Yönetim panelinden düzenlenir. Öğeler ikişer ikişer eşleşir; yeni öğeyi sona ekle. */\nconst QUICK = " + J(QUICK) + ";\n";
+  const PACKS = D.packs.map(p => {
+    const rows = p.rows.filter(r => clean(r.s));
+    const raw = rows.map(r => {
+      const s = noSep(r.s, [["|", "/"]]);
+      if (p.shared) return s;
+      const o = optLines(r.o).join(",");
+      return p.hasG ? s + "|" + noSep(r.g || r.s, [["|", "/"]]) + "|" + o : s + "|" + o;
+    }).join("\n");
+    const pools = p.pools.slice(); const last = pools[pools.length - 1] || 0;
+    if (rows.length > last && rows.length >= 12 && pools.length < 30) pools.push(rows.length);
+    const o = { id: p.id, ch: p.ch, name: clean(p.name) || "Paket", em: cleanEm(p.em), h: +p.h || 0, modes: p.modes || "TU", pool: pools[0], pools };
+    if (p.fam) o.fam = true;
+    if (p.shared) o.opts = optLines(p.shared).join(",");
+    o.raw = raw;
+    return o;
+  });
+  out["data-paketler.js"] = "/* Çift, arkadaş ve aile paketleri. Yönetim panelinden düzenlenir.\n   Kodlar soruları sırasına göre gösterir: soruları yalnızca sona ekle, 'ch' harflerini değiştirme.\n   'pools' paket büyüdükçe uzar; eski kodlar kendi havuzlarıyla açılır. */\nconst PACKS = " + J(PACKS) + ";\n";
+  const st = D.stories.map(s => {
+    const f = v => noSep(v, [[" | ", " - "], [" => ", " - "], [" :: ", ": "]]);
+    const L = [`# ${s.id} | ${f(s.title) || "Hikâye"} | ${cleanEm(s.em)} | ${+s.h || 0} | ${f(s.intro)}`];
+    s.scenes.forEach(sc => { L.push("> " + f(sc.text)); sc.opts.forEach(o => L.push((o.bold ? "! " : "- ") + f(o.label) + " => " + f(o.out))); });
+    s.ends.forEach(e => L.push("= " + f(e.t) + " :: " + f(e.x)));
+    return L.join("\n");
+  }).join("\n\n");
+  out["data-hikaye.js"] = "/* Seçimli hikâyeler. Yönetim panelinden düzenlenir. */\nconst STORY_RAW = " + JSON.stringify(st) + ";\n";
+  const T = Object.assign({}, D.tema); T.turSayisi = Math.min(30, Math.max(3, +T.turSayisi || 10));
+  ["baslik1", "baslik2", "hesap", "altyazi", "giris", "duyuru"].forEach(k => T[k] = clean(T[k]));
+  out["data-tema.js"] = "/* Sitenin görünüm ayarları. Yönetim panelinden (admin.html) değiştirilir. */\nconst TEMA = " + JSON.stringify(T, null, 2) + ";\n";
+  return out;
+}
+function validate() {
+  const errs = [];
+  D.stories.forEach(s => {
+    if (s.scenes.length !== 4) errs.push(`“${s.title}” hikâyesinde 4 bölüm olmalı.`);
+    s.scenes.forEach((sc, i) => { if (sc.opts.length !== 2 || sc.opts.filter(o => o.bold).length !== 1 || sc.opts.some(o => !clean(o.label) || !clean(o.out)) || !clean(sc.text)) errs.push(`“${s.title}” hikâyesinin ${i + 1}. bölümü eksik: sahne metni, iki seçenek, sonuçları ve bir “gözü kara” işareti gerekli.`); });
+    if (s.ends.length !== 3 || s.ends.some(e => !clean(e.t) || !clean(e.x))) errs.push(`“${s.title}” hikâyesinin 3 sonu da doldurulmalı.`);
+  });
+  D.packs.forEach(p => {
+    const n = p.rows.filter(r => clean(r.s)).length;
+    if (n < 12) errs.push(`“${p.name}” paketinde en az 12 soru olmalı (şu an ${n}).`);
+    if (p.shared) { if (optLines(p.shared).length < 2 || optLines(p.shared).length > 36) errs.push(`“${p.name}” paketinin ortak şıkları 2 ile 36 arasında olmalı.`); }
+    else p.rows.forEach((r, i) => { if (clean(r.s)) { const k = optLines(r.o).length; if (k < 2 || k > 36) errs.push(`“${p.name}” paketinin ${i + 1}. sorusunda 2 ile 36 arasında şık olmalı.`); } });
+    if (!p.modes) errs.push(`“${p.name}” paketi için en az bir oyun türü seçilmeli.`);
+    if (p.pools.length >= 30 && n > Math.max(...p.pools)) errs.push(`“${p.name}” paketi en fazla sayıda büyüdü; yeni soruları yeni bir pakete ekle.`);
+  });
+  D.quick.forEach(c => { if (c.items.filter(i => clean(i.x)).length < 2) errs.push(`“${c.name}” listesinde en az 2 öğe olmalı.`); });
+  D.cats.forEach(c => { if (!c.qs.some(q => clean(q.ax) && clean(q.bx))) errs.push(`“${c.name}” konusunda en az 1 tam soru olmalı.`); });
+  return errs;
+}
+
+/* ---------- Arayüz yardımcıları ---------- */
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) {
+    const v = attrs[k];
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v === true) e.setAttribute(k, ""); else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  kids.flat().forEach(c => c != null && e.append(c));
+  return e;
+}
+function inp(obj, key, opts = {}) {
+  const tag = opts.area ? "textarea" : "input";
+  const e = el(tag, { class: "i" + (opts.em ? " em" : ""), placeholder: opts.ph || "", type: opts.type || (opts.area ? null : "text"), "aria-label": opts.label || opts.ph || key, rows: opts.rows || null, maxlength: opts.max || null });
+  e.value = obj[key] == null ? "" : obj[key];
+  e.addEventListener("input", () => { obj[key] = opts.type === "number" ? +e.value : e.value; dirty(); if (opts.after) opts.after(); });
+  return e;
+}
+const field = (label, input) => el("label", { class: "f" }, label, input);
+const hueBg = h => `linear-gradient(155deg, hsl(${h} 58% 38%), hsl(${h} 62% 16%))`;
+function confirmInline(btnEl, text, fn) {
+  if (btnEl.dataset.arm) { fn(); return; }
+  const old = btnEl.textContent; btnEl.dataset.arm = "1"; btnEl.textContent = text;
+  setTimeout(() => { delete btnEl.dataset.arm; btnEl.textContent = old; }, 3500);
+}
+const slug = s => (clean(s).toLocaleLowerCase("tr").replace(/[çğıöşü]/g, c => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" }[c])).replace(/[^a-z0-9]+/g, "").slice(0, 10) || "yeni") + Math.random().toString(36).slice(2, 5);
+
+/* ---------- Kaydetme ---------- */
+function dirty() {
+  const changed = JSON.stringify(D) !== ORIG;
+  $("saveBtn").disabled = !changed; $("undoBtn").disabled = !changed;
+  $("savebar").classList.toggle("dirty", changed);
+  const m = $("saveMsg"); m.className = "msg"; m.textContent = changed ? "Kaydedilmemiş değişiklikler var." : "Değişiklik yok.";
+  refreshNavCounts();
+}
+async function save() {
+  const errs = validate(), m = $("saveMsg");
+  if (errs.length) { m.className = "msg bad"; m.textContent = errs[0] + (errs.length > 1 ? ` (ve ${errs.length - 1} uyarı daha)` : ""); return; }
+  const out = serialize(), changed = Object.keys(out).filter(f => out[f] !== SRC[f]);
+  if (!changed.length) { m.textContent = "Sitede zaten aynısı var."; ORIG = JSON.stringify(D); dirty(); return; }
+  $("saveBtn").disabled = true; m.className = "msg"; m.textContent = "Kaydediliyor…";
+  try {
+    for (const f of changed) {
+      m.textContent = `Kaydediliyor: ${f}`;
+      const body = { message: `Yönetim panelinden güncelleme: ${f}`, content: b64e(out[f]), branch: CFG.branch };
+      if (SHA[f]) body.sha = SHA[f];
+      const r = await gh(`contents/${f}`, { method: "PUT", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      SRC[f] = out[f]; SHA[f] = r.content.sha;
+    }
+    // Kaydedilen hâli yeniden okuyup modeli eşitle (paket havuzları vb. güncellensin)
+    const g = new Function(FILES.map(f => SRC[f]).join("\n;\n") + `;return { RAW, MORE, QUICK, PACKS, STORY_RAW, TEMA: typeof TEMA !== "undefined" ? TEMA : {} };`)();
+    D = toModel(g); ORIG = JSON.stringify(D); dirty(); render();
+    m.className = "msg ok"; m.textContent = `Kaydedildi (${changed.length} dosya). Site 1-2 dakika içinde güncellenir.`;
+  } catch (e) {
+    m.className = "msg bad"; m.textContent = "Kaydedilemedi: " + e.message; $("saveBtn").disabled = false;
+  }
+}
+
+/* ---------- Bölümler ---------- */
+const TABS = [
+  ["tema", "Görünüm"], ["cats", "Konular"], ["quick", "Hızlı seçim"], ["packs", "Çift ve aile paketleri"], ["stories", "Hikâyeler"], ["help", "Yardım"]
+];
+function refreshNavCounts() {
+  const n = { cats: D.cats.reduce((s, c) => s + c.qs.length, 0), quick: D.quick.length, packs: D.packs.length, stories: D.stories.length };
+  document.querySelectorAll("#nav button").forEach(b => { const s = b.querySelector("small"); if (s) s.textContent = n[b.dataset.tab] != null ? n[b.dataset.tab] : ""; });
+}
+function renderNav() {
+  const nav = $("nav"); nav.innerHTML = "";
+  TABS.forEach(([k, label]) => nav.append(el("button", { type: "button", "data-tab": k, "aria-current": view.tab === k ? "true" : "false", onclick: () => { view = { tab: k, sel: null }; render(); } }, el("span", { text: label }), el("small"))));
+  refreshNavCounts();
+}
+function head(title, desc, ...right) { return el("div", { class: "head" }, el("div", {}, el("h2", { text: title }), desc ? el("p", { class: "muted", text: desc }) : null), el("div", { class: "row" }, ...right)); }
+function render() {
+  renderNav();
+  const m = $("main"); m.innerHTML = "";
+  ({ tema: viewTema, cats: viewCats, quick: viewQuick, packs: viewPacks, stories: viewStories, help: viewHelp })[view.tab](m);
+  window.scrollTo(0, 0);
+}
+
+/* Görünüm */
+function viewTema(m) {
+  const T = D.tema;
+  m.append(head("Görünüm", "Sitenin başlığı, renkleri, yazı tipleri ve ana sayfadaki duyuru."));
+  const prev = el("div", { class: "card" });
+  const paint = () => {
+    prev.innerHTML = "";
+    prev.style.background = T.renkArka; prev.style.color = T.renkYazi; prev.style.borderColor = T.renkCizgi;
+    const lk = document.getElementById("fontPrev") || document.head.appendChild(el("link", { id: "fontPrev", rel: "stylesheet" }));
+    lk.href = "https://fonts.googleapis.com/css2?family=" + encodeURIComponent(T.fontBaslik) + ":wght@800&family=" + encodeURIComponent(T.fontMetin) + ":wght@400;700&display=swap";
+    prev.append(...[
+      el("div", { style: `font-size:13px;color:${T.renkSoluk};font-family:"${T.fontMetin}",sans-serif` }, el("b", { style: `color:${T.renkYazi}`, text: T.hesap }), " " + T.altyazi),
+      el("div", { style: `font-family:"${T.fontBaslik}",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:56px;line-height:.85;margin:10px 0` },
+        el("div", { text: T.baslik1 }), el("div", { style: `background:${T.renkVurgu};color:${T.renkArka};width:fit-content;padding:0 .12em;transform:rotate(-2deg)`, text: T.baslik2 })),
+      T.duyuru ? el("div", { style: `border:1px solid ${T.renkVurgu};background:${T.renkPanel};border-radius:10px;padding:8px 12px;margin-bottom:10px;font-family:"${T.fontMetin}",sans-serif`, text: T.duyuru }) : null,
+      el("div", { style: `display:flex;gap:8px;font-family:"${T.fontMetin}",sans-serif` },
+        el("span", { style: `background:${T.renkVurgu};color:#15130a;border-radius:12px;padding:10px 16px;font-weight:700`, text: "Karışık başla" }),
+        el("span", { style: `background:${T.renkPanel};border:1px solid ${T.renkCizgi};border-radius:12px;padding:10px 16px;color:${T.renkSoluk}`, text: "İkincil düğme" }))
+    ].filter(Boolean));
+  };
+  const re = { after: paint };
+  const fsel = (key, list) => { const s = el("select", { class: "i", "aria-label": key }); list.forEach(f => s.append(el("option", { value: f, text: f, selected: T[key] === f }))); s.addEventListener("change", () => { T[key] = s.value; dirty(); paint(); }); return s; };
+  m.append(
+    el("div", { class: "card" }, el("h3", { text: "Yazılar" }), el("div", { class: "fields", style: "margin-top:10px" },
+      field("Başlık, 1. satır", inp(T, "baslik1", re)), field("Başlık, 2. satır (vurgulu)", inp(T, "baslik2", re)),
+      field("Hesap adı", inp(T, "hesap", re)), field("Hesap adının yanındaki yazı", inp(T, "altyazi", re)),
+      field("Tek kişilik turdaki soru sayısı (3-30)", inp(T, "turSayisi", { type: "number" }))),
+      el("div", { class: "fields", style: "margin-top:10px;grid-template-columns:1fr" },
+        field("Giriş cümlesi (boş bırakırsan soru sayıları otomatik yazılır)", inp(T, "giris", { area: true, rows: 2 })),
+        field("Duyuru (ana sayfada başlığın altında çerçeveli görünür; boş bırakırsan gizlenir)", inp(T, "duyuru", { area: true, rows: 2, after: paint })))),
+    el("div", { class: "card" }, el("h3", { text: "Renkler" }), el("div", { class: "fields", style: "margin-top:10px" },
+      ...[["renkVurgu", "Vurgu rengi"], ["renkArka", "Arka plan"], ["renkPanel", "Kutu rengi"], ["renkYazi", "Yazı rengi"], ["renkSoluk", "Soluk yazı"], ["renkCizgi", "Çizgi rengi"]].map(([k, l]) => field(l, inp(T, k, { type: "color", after: paint })))),
+      el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn sm", type: "button", onclick: () => { ["renkVurgu", "renkArka", "renkPanel", "renkYazi", "renkSoluk", "renkCizgi"].forEach(k => T[k] = DEFAULT_TEMA[k]); dirty(); render(); } }, "Varsayılan renklere dön"))),
+    el("div", { class: "card" }, el("h3", { text: "Yazı tipleri" }), el("div", { class: "fields", style: "margin-top:10px" },
+      field("Başlık yazı tipi", fsel("fontBaslik", FONTS_D)), field("Metin yazı tipi", fsel("fontMetin", FONTS_B)))),
+    el("h3", { text: "Önizleme", style: "margin:18px 0 10px" }), prev
+  );
+  paint();
+}
+
+/* Konular */
+function viewCats(m) {
+  if (view.sel == null) {
+    m.append(head("Konular", "Ana sayfadaki büyük konu kutuları. Her soruda iki seçenek var; birine tıklayan tur içinde ilerler."));
+    const g = el("div", { class: "grid" });
+    D.cats.forEach((c, i) => g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(c.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: c.em }), el("b", { text: c.name }), el("small", { text: c.qs.length + " soru" }))));
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => { D.cats.push({ id: slug("konu"), name: "Yeni konu", em: "✨", h: Math.floor(Math.random() * 360), heads: "Hangisini seçerdin?", qs: [{ t: "", ae: "🅰️", ax: "", be: "🅱️", bx: "" }] }); view.sel = D.cats.length - 1; dirty(); render(); } }, "+ Yeni konu"));
+    m.append(g); return;
+  }
+  const c = D.cats[view.sel], list = el("div");
+  m.append(head(c.name, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Konular"),
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Emin misin? Tekrar bas", () => { D.cats.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Konuyu sil")));
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" },
+    field("Konu adı", inp(c, "name", { after: () => m.querySelector("h2").textContent = c.name })), el("label", { class: "f" }, "Emoji", inp(c, "em", { em: true })),
+    field("Renk tonu (0-360)", inp(c, "h", { type: "number" }))),
+    el("div", { style: "margin-top:10px" }, field("Soru başlıkları (her satıra bir tane; sorular bunları sırayla kullanır)", inp(c, "heads", { area: true, rows: 3 })))));
+  const note = el("div", { class: "note small", text: "Satırın başındaki “Başlık” boşsa yukarıdaki soru başlıkları sırayla kullanılır. Soruları silmek, ziyaretçilerin bu konudaki ilerleme sayacını kaydırabilir; yeni soruyu sona eklemek en güvenlisi." });
+  const draw = () => {
+    list.innerHTML = "";
+    c.qs.forEach((q, i) => list.append(el("div", { class: "qrow" },
+      el("span", { class: "n", text: i + 1 }), Object.assign(inp(q, "t", { ph: "Başlık (isteğe bağlı)" }), { className: "i t" }),
+      Object.assign(inp(q, "ae", { em: true, label: "Üst seçenek emojisi" }), { className: "i em ae" }), inp(q, "ax", { ph: "Üst seçenek" }),
+      Object.assign(inp(q, "be", { em: true, label: "Alt seçenek emojisi" }), { className: "i em be" }), inp(q, "bx", { ph: "Alt seçenek" }),
+      el("button", { class: "x", type: "button", title: "Soruyu sil", "aria-label": "Soruyu sil", onclick: () => { c.qs.splice(i, 1); dirty(); draw(); } }, "×"))));
+  };
+  draw();
+  m.append(note, el("div", { class: "card" }, el("div", { class: "row", style: "justify-content:space-between" }, el("h3", { text: "Sorular" }),
+    el("button", { class: "btn sm", type: "button", onclick: () => { c.qs.push({ t: "", ae: "🅰️", ax: "", be: "🅱️", bx: "" }); dirty(); draw(); list.lastChild.querySelector("input:nth-of-type(3)")?.focus(); } }, "+ Soru ekle")), list,
+    el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { c.qs.push({ t: "", ae: "🅰️", ax: "", be: "🅱️", bx: "" }); dirty(); draw(); } }, "+ Soru ekle"))));
+}
+
+/* Hızlı seçim */
+function viewQuick(m) {
+  if (view.sel == null) {
+    m.append(head("Hızlı seçim", "Her listedeki öğeler ikişer ikişer eşleşir: 16 öğe 120 ikilem demek. Yeni öğeyi listenin sonuna ekle."));
+    const g = el("div", { class: "grid" });
+    D.quick.forEach((c, i) => { const n = c.items.length; g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(c.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: c.em }), el("b", { text: c.name }), el("small", { text: `${n} öğe · ${n * (n - 1) / 2} ikilem` }))); });
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => { D.quick.push({ id: "q" + slug("liste"), name: "Yeni liste", em: "✨", h: Math.floor(Math.random() * 360), head: "Hangisi?", items: [{ e: "🅰️", x: "" }, { e: "🅱️", x: "" }] }); view.sel = D.quick.length - 1; dirty(); render(); } }, "+ Yeni liste"));
+    m.append(g); return;
+  }
+  const c = D.quick[view.sel], list = el("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  m.append(head(c.name, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Listeler"),
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Emin misin? Tekrar bas", () => { D.quick.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Listeyi sil")));
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" }, field("Liste adı", inp(c, "name")), el("label", { class: "f" }, "Emoji", inp(c, "em", { em: true })), field("Soru başlığı", inp(c, "head")), field("Renk tonu (0-360)", inp(c, "h", { type: "number" })))));
+  const draw = () => {
+    list.innerHTML = "";
+    c.items.forEach((it, i) => list.append(el("div", { class: "irow" }, inp(it, "e", { em: true, label: "Emoji" }), inp(it, "x", { ph: "Öğe" }),
+      el("button", { class: "x", type: "button", "aria-label": "Öğeyi sil", onclick: () => { c.items.splice(i, 1); dirty(); draw(); } }, "×"))));
+  };
+  draw();
+  m.append(el("div", { class: "note small", text: "Öğe silmek ya da araya eklemek, ziyaretçilerin bu listedeki ilerleme sayacını sıfırlayabilir. Yeni öğeleri sona eklemek en güvenlisi." }),
+    el("div", { class: "card" }, el("h3", { text: "Öğeler", style: "margin-bottom:10px" }), list,
+      el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { c.items.push({ e: "🔹", x: "" }); dirty(); draw(); list.lastChild.querySelectorAll("input")[1].focus(); } }, "+ Öğe ekle"))));
+}
+
+/* Paketler */
+function viewPacks(m) {
+  if (view.sel == null) {
+    m.append(head("Çift ve aile paketleri", "“Beni ne kadar tanıyor?”, “Uyum testi” ve “Aile ve grup anketi” bu paketlerden soru çeker. Her oyunda paketten rastgele 12 soru gelir."));
+    const g = el("div", { class: "grid" });
+    D.packs.forEach((p, i) => g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(p.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: p.em }), el("b", { text: p.name }), el("small", { text: `${p.rows.length} soru · ${[p.modes.includes("T") ? "Tanıma" : "", p.modes.includes("U") ? "Uyum" : "", p.modes.includes("G") ? "Aile" : ""].filter(Boolean).join(", ")}` }))));
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => {
+      const used = new Set(D.packs.map(p => p.ch)), ch = [...B36].find(c => !used.has(c));
+      if (!ch) { alertBar("Paket sınırına ulaşıldı."); return; }
+      D.packs.push({ id: slug("paket"), ch, name: "Yeni paket", em: "✨", h: Math.floor(Math.random() * 360), modes: "TUG", fam: false, pools: [], shared: "", hasG: false, rows: [{ s: "", g: "", o: "" }] });
+      view.sel = D.packs.length - 1; dirty(); render();
+    } }, "+ Yeni paket"));
+    m.append(g); return;
+  }
+  const p = D.packs[view.sel], lockN = p.pools.length ? Math.max(...p.pools) : 0, list = el("div");
+  m.append(head(p.name, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Paketler"),
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Bu paketle verilmiş kodlar açılmaz. Tekrar bas", () => { D.packs.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Paketi sil")));
+  const modeBox = (k, label) => { const cb = el("input", { type: "checkbox", checked: p.modes.includes(k) }); cb.addEventListener("change", () => { p.modes = "TUG".split("").filter(x => x === k ? cb.checked : p.modes.includes(x)).join(""); dirty(); }); return el("label", { class: "row small" }, cb, label); };
+  const famBox = (() => { const cb = el("input", { type: "checkbox", checked: p.fam }); cb.addEventListener("change", () => { p.fam = cb.checked; dirty(); }); return el("label", { class: "row small" }, cb, "Aile paketi olarak öne çıkar"); })();
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" }, field("Paket adı", inp(p, "name")), el("label", { class: "f" }, "Emoji", inp(p, "em", { em: true })), field("Renk tonu (0-360)", inp(p, "h", { type: "number" }))),
+    el("div", { class: "row", style: "margin-top:12px;gap:18px" }, el("span", { class: "small muted", text: "Hangi oyunlarda çıksın?" }), modeBox("T", "Beni ne kadar tanıyor?"), modeBox("U", "Uyum testi"), modeBox("G", "Aile ve grup anketi"), famBox),
+    p.shared || p.rows.length === 0 ? el("div", { style: "margin-top:12px" }, field("Ortak şıklar (her satıra “emoji metin”; bütün sorular bunları kullanır)", inp(p, "shared", { area: true, rows: 5 }))) : null));
+  m.append(el("div", { class: "note small" }, lockN ? `🔒 İlk ${lockN} soru şu an verilmiş kodlarda kullanılıyor. Bunların metnini düzeltebilirsin ama silemez, yerini değiştiremezsin. Yeni sorular sona eklenir ve bir sonraki oyunlardan itibaren çıkmaya başlar.` : "Paket en az 12 soruyla kaydedilebilir. Kaydedildikten sonra soruların sırası sabitlenir.",
+    p.hasG ? " Bu pakette “tahmin edene sorulan” ikinci bir soru metni de var: Beni ne kadar tanıyor? oyununda tahmin eden kişi onu görür." : ""));
+  const draw = () => {
+    list.innerHTML = "";
+    p.rows.forEach((r, i) => {
+      const locked = i < lockN;
+      list.append(el("div", { class: "prow" + (locked ? " locked" : ""), style: p.hasG ? null : "grid-template-columns: 28px minmax(160px, 1.1fr) minmax(220px, 1fr) 30px" },
+        el("span", { class: "n", text: i + 1 }),
+        field("Soru", inp(r, "s", { ph: "En sevdiğin renk" })),
+        p.hasG ? field("Tahmin edene sorulan (isteğe bağlı)", inp(r, "g", { ph: "En sevdiği renk" })) : null,
+        p.shared ? el("span", { class: "small muted", text: "Ortak şıkları kullanır" }) : field("Şıklar (her satıra “emoji metin”)", inp(r, "o", { area: true, rows: 4, ph: "🔴 Kırmızı\n🔵 Mavi\n🟢 Yeşil" })),
+        el("button", { class: "x", type: "button", disabled: locked, "aria-label": "Soruyu sil", onclick: () => { p.rows.splice(i, 1); dirty(); draw(); } }, "×")));
+    });
+  };
+  draw();
+  m.append(el("div", { class: "card" }, el("h3", { text: "Sorular", style: "margin-bottom:6px" }), list,
+    el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { p.rows.push({ s: "", g: "", o: "" }); dirty(); draw(); list.lastChild.querySelector("input,textarea").focus(); } }, "+ Soru ekle"))));
+}
+
+/* Hikâyeler */
+function blankStory() {
+  return { id: slug("hikaye"), title: "Yeni hikâye", em: "📖", h: Math.floor(Math.random() * 360), intro: "",
+    scenes: [0, 1, 2, 3].map(() => ({ text: "", opts: [{ label: "", out: "", bold: true }, { label: "", out: "", bold: false }] })),
+    ends: [{ t: "", x: "" }, { t: "", x: "" }, { t: "", x: "" }] };
+}
+function viewStories(m) {
+  if (view.sel == null) {
+    m.append(head("Hikâyeler", "Her hikâye 4 bölümden oluşur. Her bölümde iki seçenek vardır; biri “gözü kara”, biri “temkinli”. Kaç gözü kara seçim yapıldığına göre 3 sondan biri gösterilir."));
+    const g = el("div", { class: "grid" });
+    D.stories.forEach((s, i) => g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(s.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: s.em }), el("b", { text: s.title }))));
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => { D.stories.push(blankStory()); view.sel = D.stories.length - 1; dirty(); render(); } }, "+ Yeni hikâye"));
+    m.append(g); return;
+  }
+  const s = D.stories[view.sel];
+  m.append(head(s.title, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Hikâyeler"),
+    view.sel > 0 ? el("button", { class: "btn", type: "button", onclick: () => { const [x] = D.stories.splice(view.sel, 1); D.stories.splice(view.sel - 1, 0, x); view.sel--; dirty(); render(); } }, "↑ Öne al") : null,
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Emin misin? Tekrar bas", () => { D.stories.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Hikâyeyi sil")));
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" }, field("Başlık", inp(s, "title")), el("label", { class: "f" }, "Emoji", inp(s, "em", { em: true })), field("Renk tonu (0-360)", inp(s, "h", { type: "number" }))),
+    el("div", { style: "margin-top:10px" }, field("Giriş cümlesi (ilk bölümün üstünde görünür)", inp(s, "intro", { area: true, rows: 2 })))));
+  s.scenes.forEach((sc, i) => {
+    const name = "bold" + i;
+    const optRow = (o, k) => {
+      const r = el("input", { type: "radio", name, checked: o.bold });
+      r.addEventListener("change", () => { sc.opts.forEach((x, j) => x.bold = j === k); dirty(); });
+      return el("div", { class: "opt2" }, field(k === 0 ? "🅰️ Seçenek" : "🅱️ Seçenek", inp(o, "label")), field("Bu seçilince ne olur?", inp(o, "out", { area: true, rows: 2 })), el("label", { class: "bold" }, r, "🔥 Gözü kara"));
+    };
+    m.append(el("div", { class: "scene", style: "margin-bottom:12px" }, el("h3", { text: `${i + 1}. bölüm` }), field("Sahne", inp(sc, "text", { area: true, rows: 2 })), ...sc.opts.map(optRow)));
+  });
+  const endNames = ["Temkinli son (0-1 gözü kara seçim)", "Dengeli son (2 gözü kara seçim)", "Gözü kara son (3-4 gözü kara seçim)"];
+  m.append(el("div", { class: "card" }, el("h3", { text: "Sonlar", style: "margin-bottom:10px" }),
+    ...s.ends.map((e, i) => el("div", { class: "opt2", style: "grid-template-columns:minmax(0,.6fr) minmax(0,1.4fr);margin-bottom:8px" }, field(endNames[i] + ": başlık", inp(e, "t")), field("Son metni", inp(e, "x", { area: true, rows: 2 }))))));
+}
+
+function viewHelp(m) {
+  m.append(head("Yardım", null));
+  const items = [
+    ["Değişiklikler ne zaman görünür?", "“Siteye kaydet”e bastıktan sonra GitHub siteyi yeniden kurar; genelde 1-2 dakika sürer. Tarayıcın eski hâli gösteriyorsa sayfayı yenile."],
+    ["Bir şeyi bozarsam?", "Her kayıt GitHub'da ayrı bir sürüm olarak saklanır. Kaydetmeden önce “Değişiklikleri geri al” her şeyi son kaydedilen hâle döndürür. Kaydettikten sonra geri dönmek istersen bana ya da GitHub'daki geçmişe bakabilirsin; ayrıca “Yedek indir” ile o anki bütün içeriği bilgisayarına alabilirsin."],
+    ["Paketlerdeki kilitli sorular ne?", "Çiftlerin ve ailelerin birbirine gönderdiği kodlar, soruları paketteki sırasına göre bulur. Bu yüzden kullanılmış soruları silemez ya da sıralarını değiştiremezsin; metinlerini düzeltebilirsin. Yeni sorular sona eklenir."],
+    ["Görselleri nasıl eklerim?", "Bu panel şimdilik yazı, emoji ve renkleri düzenliyor. Sorulara kendi görsellerini eklemek istersen bana söyle, paneli genişletelim."],
+    ["Anahtarım çalınırsa?", "GitHub'da Settings › Developer settings › Personal access tokens bölümünden anahtarı silmen yeterli. Anahtar yalnızca o-mu-bu-mu deposunun dosyalarını değiştirebilir."]
+  ];
+  items.forEach(([q, a]) => m.append(el("div", { class: "card" }, el("h3", { text: q, style: "margin-bottom:6px" }), el("p", { style: "margin:0", text: a }))));
+}
+function alertBar(t) { const mm = $("saveMsg"); mm.className = "msg bad"; mm.textContent = t; }
+
+/* ---------- Başlatma ---------- */
+async function start() {
+  $("login").hidden = true; $("app").hidden = false;
+  $("main").innerHTML = ""; $("main").append(el("p", { class: "muted", text: "İçerik yükleniyor…" }));
+  try { await loadAll(); render(); dirty(); }
+  catch (e) {
+    $("app").hidden = true; $("login").hidden = false;
+    $("loginMsg").textContent = e.message; $("loginMsg").style.color = "var(--bad)";
+  }
+}
+$("ownerIn").value = CFG.owner; $("repoIn").value = CFG.repo; $("branchIn").value = CFG.branch;
+$("loginBtn").addEventListener("click", async () => {
+  const t = $("tokenIn").value.trim();
+  if (!t) { $("loginMsg").textContent = "Anahtarı yapıştır."; return; }
+  CFG = { token: t, owner: $("ownerIn").value.trim() || CFG.owner, repo: $("repoIn").value.trim() || CFG.repo, branch: $("branchIn").value.trim() || "main" };
+  $("loginMsg").style.color = ""; $("loginMsg").textContent = "Kontrol ediliyor…";
+  try {
+    const r = await gh("");
+    if (r.permissions && !r.permissions.push) throw new Error("Anahtarın bu depoya yazma izni yok (Contents: Read and write olmalı).");
+    try { localStorage.setItem(LS, JSON.stringify(CFG)); } catch (e) {}
+    $("tokenIn").value = ""; start();
+  } catch (e) { $("loginMsg").style.color = "var(--bad)"; $("loginMsg").textContent = e.message; }
+});
+$("tokenIn").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+$("logoutBtn").addEventListener("click", () => { try { localStorage.removeItem(LS); } catch (e) {} CFG.token = ""; location.reload(); });
+$("saveBtn").addEventListener("click", save);
+$("undoBtn").addEventListener("click", e => confirmInline(e.currentTarget, "Kaydedilmemiş her şey silinir. Tekrar bas", () => { D = JSON.parse(ORIG); render(); dirty(); }));
+$("backupBtn").addEventListener("click", () => {
+  const out = serialize(), blob = new Blob([JSON.stringify({ tarih: new Date().toISOString(), dosyalar: out }, null, 1)], { type: "application/json" });
+  const a = el("a", { href: URL.createObjectURL(blob), download: "o-mu-bu-mu-yedek-" + new Date().toISOString().slice(0, 10) + ".json" }); document.body.append(a); a.click(); a.remove();
+});
+window.addEventListener("beforeunload", e => { if (D && JSON.stringify(D) !== ORIG) { e.preventDefault(); e.returnValue = ""; } });
+if (CFG.token) start();
+</script>
+</body>
+</html>
