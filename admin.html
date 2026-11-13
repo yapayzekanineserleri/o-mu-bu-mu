@@ -179,7 +179,7 @@ const B36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const b64e = s => { const b = new TextEncoder().encode(s); let r = ""; for (let i = 0; i < b.length; i += 0x8000) r += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(r); };
 const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), c => c.charCodeAt(0)));
 async function gh(path, opt = {}) {
-  const r = await fetch(`https://api.github.com/repos/${CFG.owner}/${CFG.repo}/${path}`, {
+  const r = await fetch(`https://api.github.com/repos/${CFG.owner}/${CFG.repo}${path ? "/" + path : ""}`, {
     ...opt, cache: "no-store",
     headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + CFG.token, "X-GitHub-Api-Version": "2022-11-28", ...(opt.headers || {}) }
   });
