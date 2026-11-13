@@ -3,7 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://gc.zgo.at; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.goatcounter.com; connect-src 'self' https://*.goatcounter.com https://fonts.googleapis.com https://fonts.gstatic.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>O mu Bu mu Anketleri</title>
+<meta name="description" content="O mu, bu mu? Binlerce ikilem, çiftler ve aileler için kodla oynanan oyunlar, seçimlerine göre ilerleyen hikâyeler.">
+<meta name="theme-color" content="#0d0f14">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="O mu bu mu">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
@@ -19,6 +30,7 @@
   --muted: #9aa0ad;      /* secondary text */
   --line: #2a2f3b;       /* hairlines */
   --accent: #ffd23f;     /* the one loud colour on the home page */
+  --on-accent: #15130a;  /* text on accent */
   --sticker: #7c4dff;    /* poll sticker colour, set per topic */
   --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
   --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -49,7 +61,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .mode b { display: block; color: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: .02em; margin-bottom: 2px; }
 .mode[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .mode[aria-pressed="true"] b { color: var(--accent); }
-.cta { border: 0; border-radius: 14px; padding: 15px 22px; background: var(--accent); color: #15130a; font-weight: 700; font-size: 17px; cursor: pointer; }
+.cta { border: 0; border-radius: 14px; padding: 15px 22px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 17px; cursor: pointer; }
 .cta:hover { filter: brightness(1.07); }
 
 .teaser { justify-self: center; width: min(100%, 300px); aspect-ratio: 9 / 15; border: 0; padding: 0; border-radius: 18px; overflow: hidden; cursor: pointer; position: relative; display: flex; flex-direction: column; transform: rotate(3deg); box-shadow: 0 30px 70px rgba(0,0,0,.55); color: #fff; }
@@ -205,14 +217,40 @@ button.ptile:hover { transform: translateY(-3px); }
 .card-out small { color: var(--muted); font-size: 13px; max-width: 30ch; display: block; margin-bottom: 8px; }
 .copyline { background: var(--panel); border: 1px dashed var(--muted); border-radius: 14px; padding: 14px; font: 700 16px ui-monospace, Menlo, Consolas, monospace; user-select: all; overflow-wrap: anywhere; }
 
+.cat b { overflow-wrap: anywhere; hyphens: auto; }
+.light .qwho, .light .quiz.storymode h2, .light .stext .out { filter: brightness(.62) saturate(1.2); }
+.light .result h2 { filter: brightness(.68) saturate(1.2); }
+.light .story, .light .teaser { box-shadow: 0 24px 50px rgba(0,0,0,.18); }
+.baracts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.chip:hover { border-color: var(--muted); }
+.lookwrap { position: relative; }
+.lookmenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 6px; min-width: 210px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+.lookmenu button { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: var(--ink); text-align: left; padding: 8px 10px; border-radius: 9px; cursor: pointer; font-size: 14px; }
+.lookmenu button:hover, .lookmenu button[aria-checked="true"] { background: var(--line); }
+.lookmenu .sw { width: 22px; height: 22px; border-radius: 50%; flex: none; border: 2px solid rgba(128,128,128,.4); }
+.iosnote { margin-top: 10px; background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.sitefoot { margin-top: 48px; padding-top: 26px; border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.sitefoot #fTitle { font-family: var(--font-display); font-weight: 800; font-size: 34px; text-transform: uppercase; line-height: 1; }
+.sitefoot p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.sitefoot a { color: var(--ink); }
+.sitefoot h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 800; font-size: 20px; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
+.social { display: flex; flex-direction: column; gap: 8px; }
+.social a, .sitefoot a.mail { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 15px; width: fit-content; max-width: 100%; }
+.social a:hover, .sitefoot a.mail:hover { color: var(--accent); }
+.sitefoot svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sitefoot a.mail span { overflow-wrap: anywhere; }
+
 @media (max-width: 760px) {
+  .sitefoot { grid-template-columns: 1fr; gap: 20px; }
+
   .section-head { flex-wrap: wrap; }
   .section-head h2 { font-size: 30px; }
   .cats, .cats.small, .packs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .cat { min-height: 118px; padding: 12px; }
   .cat .em { font-size: 30px; }
   .cat b, .cat.tale b { font-size: 20px; padding-top: 8px; }
-  .cats.small .cat b { font-size: 18px; }
+  .cats.small .cat b { font-size: 17px; }
   .cat .ends { top: 8px; right: 8px; font-size: 10px; }
   .opts { grid-template-columns: 1fr; }
   .opt { min-height: 54px; padding: 11px 14px; }
@@ -225,18 +263,38 @@ button.ptile:hover { transform: translateY(-3px); }
 </style>
 <script src="data-tema.js"></script>
 <script>
+/* Görünüm: sitenin varsayılanı yönetim panelindeki TEMA'dan gelir; ziyaretçi isterse kendi temasını seçer. */
+var LOOKS = {
+  gece:     { ad: "Gece (varsayılan)" },
+  gunduz:   { ad: "Gündüz",   light: true, night: "#f6f4ef", panel: "#ffffff", ink: "#16181d", muted: "#5d6370", line: "#dcd8cf", accent: "#d9480f", onAccent: "#ffffff" },
+  gul:      { ad: "Gül",      night: "#1a0f16", panel: "#2a1824", ink: "#fff1f6", muted: "#c9a3b5", line: "#45293a", accent: "#ff6fa8", onAccent: "#1a0f16" },
+  okyanus:  { ad: "Okyanus",  night: "#06141c", panel: "#0e2430", ink: "#e8f7ff", muted: "#8fb3c4", line: "#1d3a48", accent: "#3fd0e0", onAccent: "#06141c" },
+  orman:    { ad: "Orman",    night: "#0c140e", panel: "#16241a", ink: "#eef6ea", muted: "#9db59f", line: "#26392a", accent: "#9be15d", onAccent: "#0c140e" },
+  kontrast: { ad: "Yüksek kontrast", night: "#000000", panel: "#111111", ink: "#ffffff", muted: "#d6d6d6", line: "#6a6a6a", accent: "#ffe600", onAccent: "#000000" }
+};
+function applyLook(name) {
+  var T = typeof TEMA === "object" ? TEMA : {}, L = LOOKS[name] || LOOKS.gece, r = document.documentElement.style;
+  var v = L.night ? L : { night: T.renkArka, panel: T.renkPanel, ink: T.renkYazi, muted: T.renkSoluk, line: T.renkCizgi, accent: T.renkVurgu, onAccent: "#15130a" };
+  var map = { night: "--night", panel: "--panel", ink: "--ink", muted: "--muted", line: "--line", accent: "--accent", onAccent: "--on-accent" };
+  for (var k in map) { if (v[k]) r.setProperty(map[k], v[k]); else r.removeProperty(map[k]); }
+  r.colorScheme = L.light ? "light" : "dark";
+  document.documentElement.classList.toggle("light", !!L.light);
+  var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", v.night || "#0d0f14");
+  try { localStorage.setItem("omubumu-gorunum", name); } catch (e) {}
+  window.CURRENT_LOOK = LOOKS[name] ? name : "gece";
+}
 (function () {
-  if (typeof TEMA !== "object") return;
-  var r = document.documentElement.style, map = { renkArka: "--night", renkPanel: "--panel", renkYazi: "--ink", renkSoluk: "--muted", renkCizgi: "--line", renkVurgu: "--accent" };
-  for (var k in map) if (TEMA[k]) r.setProperty(map[k], TEMA[k]);
-  var fonts = [TEMA.fontBaslik, TEMA.fontMetin].filter(function (f) { return f && f !== "Barlow Condensed" && f !== "Onest"; });
+  var T = typeof TEMA === "object" ? TEMA : {}, r = document.documentElement.style;
+  var fonts = [T.fontBaslik, T.fontMetin].filter(function (f) { return f && f !== "Barlow Condensed" && f !== "Onest"; });
   if (fonts.length) {
     var l = document.createElement("link"); l.rel = "stylesheet";
     l.href = "https://fonts.googleapis.com/css2?" + fonts.map(function (f) { return "family=" + encodeURIComponent(f) + ":wght@400;500;700;800"; }).join("&") + "&display=swap";
     document.head.appendChild(l);
   }
-  if (TEMA.fontBaslik) r.setProperty("--font-display", '"' + TEMA.fontBaslik + '", "Arial Narrow", Impact, sans-serif');
-  if (TEMA.fontMetin) r.setProperty("--font-body", '"' + TEMA.fontMetin + '", system-ui, -apple-system, "Segoe UI", sans-serif');
+  if (T.fontBaslik) r.setProperty("--font-display", '"' + T.fontBaslik + '", "Arial Narrow", Impact, sans-serif');
+  if (T.fontMetin) r.setProperty("--font-body", '"' + T.fontMetin + '", system-ui, -apple-system, "Segoe UI", sans-serif');
+  var saved = "gece"; try { saved = localStorage.getItem("omubumu-gorunum") || "gece"; } catch (e) {}
+  applyLook(saved);
 })();
 </script>
 </head>
@@ -245,8 +303,20 @@ button.ptile:hover { transform: translateY(-3px); }
 <div class="wrap" id="home">
   <div class="bar">
     <span><b id="brandHandle">@yapayzekanineserleri</b> <span id="brandSub">anketleri</span></span>
-    <span class="total" id="total"></span>
+    <span class="baracts">
+      <span class="total" id="total"></span>
+      <button class="chip" type="button" id="installBtn" hidden>📲 Uygulamayı yükle</button>
+      <span class="lookwrap">
+        <button class="chip" type="button" id="lookBtn" aria-haspopup="true" aria-expanded="false">🎨 Tema</button>
+        <span class="lookmenu" id="lookMenu" role="menu" hidden></span>
+      </span>
+    </span>
   </div>
+  <div class="iosnote" id="iosNote" hidden>
+    <span><b>Telefonuna uygulama olarak ekle:</b> Safari'de alttaki <b>Paylaş</b> düğmesine dokun, ardından <b>Ana Ekrana Ekle</b>'yi seç.</span>
+    <button class="link" type="button" id="iosClose">Kapat</button>
+  </div>
+
 
   <section class="hero">
     <div>
@@ -289,10 +359,29 @@ button.ptile:hover { transform: translateY(-3px); }
   <div class="section-head" style="margin-top:34px"><h2>Hızlı seçim</h2><span id="quickCount"></span></div>
   <div class="cats small" id="quick"></div>
 
+  <footer class="sitefoot">
+    <div class="fbrand">
+      <b id="fTitle">O mu, bu mu?</b>
+      <p>Bu siteyi <a id="fHandle" href="https://instagram.com/yapayzekanineserleri" rel="noopener" target="_blank">@yapayzekanineserleri</a> hazırladı.</p>
+    </div>
+    <div class="fcol">
+      <h3>Takip et</h3>
+      <div class="social">
+        <a id="fIg" href="https://instagram.com/yapayzekanineserleri" rel="noopener" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.6"/><path d="M8 6l1.5-2.5h5L16 6"/></svg>Instagram</a>
+        <a id="fYt" href="https://www.youtube.com/@yapayzekanineserlerii" rel="noopener" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>YouTube</a>
+        <a id="fTt" href="https://www.tiktok.com/@yapayzekanineserlerii" rel="noopener" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>TikTok</a>
+      </div>
+    </div>
+    <div class="fcol">
+      <h3>Bize ulaş</h3>
+      <a class="mail" id="fMail" href="mailto:yapayzekanineserleri@gmail.com"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg><span id="fMailText">yapayzekanineserleri@gmail.com</span></a>
+    </div>
+  </footer>
   <div class="foot">
-    <span>Cevapların yalnızca bu tarayıcıda saklanır.</span>
+    <span>Cevapların yalnızca bu tarayıcıda saklanır. Kişisel bilgi toplamıyoruz.</span>
     <button class="link" type="button" id="reset">İlerlemeyi sıfırla</button>
   </div>
+
 </div>
 
 <section class="play" id="play" hidden>
@@ -447,6 +536,7 @@ let G = null;   // current game
 let advance = null, tick = null;
 
 function start(cat, firstQ) {
+  if (typeof track === "function") track(`tur/${store.mode}/${cat ? cat.id : "karisik"}`, `${store.mode === "duel" ? "Düello" : "Tek kişi"}: ${cat ? cat.name : "Karışık"}`);
   const pool = cat ? cat.qs : ALL, mode = store.mode;
   let deck;
   if (mode === "crowd") deck = shuffle(pool);

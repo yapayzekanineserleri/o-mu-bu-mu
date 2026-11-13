@@ -14,5 +14,10 @@ const TEMA = {
   "fontBaslik": "Barlow Condensed",
   "fontMetin": "Onest",
   "turSayisi": 10,
-  "duyuru": ""
+  "duyuru": "",
+  "instagram": "https://instagram.com/yapayzekanineserleri",
+  "youtube": "https://www.youtube.com/@yapayzekanineserlerii",
+  "tiktok": "https://www.tiktok.com/@yapayzekanineserlerii",
+  "eposta": "yapayzekanineserleri@gmail.com",
+  "istatistik": ""
 };

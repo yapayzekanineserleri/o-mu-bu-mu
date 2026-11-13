@@ -115,6 +115,7 @@ function openPacks(kind) {
 /* ---------- Çoktan seçmeli tur (çift ve grup) ---------- */
 let P = null;
 function startPair(kind, pack) {
+  track(`cift/${kind}/${pack.id}`, `${MODE_NAME[kind]}: ${pack.name}`);
   P = { kind, pack, seed: Math.floor(Math.random() * 46656), role: "A", a: [], b: [], pos: 0 };
   P.pool = pack.pool; P.qs = pickPair(pack, P.seed, P.pool);
   showOnly("quiz"); renderPairQ();
@@ -213,6 +214,7 @@ function pairResult() {
 
 /* ---------- Aile ve grup anketi ---------- */
 function newGroup(pack) {
+  track(`aile/${pack.id}`, `Aile anketi: ${pack.name}`);
   const seed = Math.floor(Math.random() * 46656), code = fmtCode(encCode("G", pack, seed, null, null, pack.pool));
   const msg = `O mu, bu mu? “${pack.name}” anketini başlattım. Siteyi aç, “Kodun mu var?” kutusuna şunu yapıştır: ${code}\nBitince çıkan cevap satırını bu gruba at.`;
   const acts = el("div", "ractions");
@@ -340,7 +342,8 @@ const STORIES = STORY_RAW.trim().split(/\n\s*\n/).map(block => {
   return s;
 });
 let S = null;
-function playStory(s) { S = { s, pos: 0, bold: 0, picks: [] }; P = null; showOnly("quiz"); renderScene(); }
+function playStory(s) {
+  track(`hikaye/${s.id}`, `Hikâye: ${s.title}`); S = { s, pos: 0, bold: 0, picks: [] }; P = null; showOnly("quiz"); renderScene(); }
 function renderScene() {
   const s = S.s, sc = s.scenes[S.pos], n = s.scenes.length, quiz = $("quiz");
   quiz.classList.add("storymode"); quiz.classList.remove("u"); quiz.style.setProperty("--sticker", `hsl(${s.h} 70% 52%)`);
@@ -422,6 +425,24 @@ function storyCard(o) {
   f.then(draw, draw);
 }
 
+/* ---------- Uygulama modu ---------- */
+let installEvt = null;
+const standalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (!standalone()) $("installBtn").hidden = false; });
+window.addEventListener("appinstalled", () => { $("installBtn").hidden = true; track("uygulama/yuklendi", "Uygulama yüklendi"); });
+$("installBtn").addEventListener("click", async () => {
+  if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; $("installBtn").hidden = true; return; }
+  $("iosNote").hidden = false;
+});
+$("iosClose").addEventListener("click", () => { $("iosNote").hidden = true; });
+(function () {
+  const appleMobile = /iphone|ipad|ipod/i.test(navigator.platform || "") || (navigator.maxTouchPoints > 1 && /mac/i.test(navigator.platform || ""));
+  if (appleMobile && !standalone()) $("installBtn").hidden = false;
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !framed) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
+})();
+
 /* ---------- Ana sayfanın ek bölümleri ---------- */
 function applyTema() {
   if (typeof TEMA !== "object") return;
@@ -429,7 +450,52 @@ function applyTema() {
   set("brandT1", TEMA.baslik1); set("brandT2", TEMA.baslik2); set("brandHandle", TEMA.hesap); set("brandSub", TEMA.altyazi);
   document.querySelectorAll(".roundN").forEach(e => e.textContent = ROUND);
   const n = $("notice"); n.hidden = !TEMA.duyuru; n.textContent = TEMA.duyuru || "";
+  const safeUrl = u => /^https:\/\/[^\s"'<>]+$/i.test(String(u || "").trim()) ? String(u).trim() : null;
+  [["fIg", TEMA.instagram], ["fYt", TEMA.youtube], ["fTt", TEMA.tiktok]].forEach(([id, u]) => {
+    const a = $(id); if (!a || u == null) return;
+    if (String(u).trim() === "") { a.hidden = true; return; }
+    const v = safeUrl(u); if (v) { a.href = v; a.hidden = false; }
+  });
+  if (TEMA.hesap) { $("fHandle").textContent = TEMA.hesap; const ig = safeUrl(TEMA.instagram); if (ig) $("fHandle").href = ig; }
+  if (TEMA.baslik1 || TEMA.baslik2) $("fTitle").textContent = `${TEMA.baslik1 || ""} ${TEMA.baslik2 || ""}`.trim();
+  if (TEMA.eposta != null) {
+    const mail = String(TEMA.eposta).trim(), col = $("fMail").closest(".fcol");
+    if (mail === "") col.hidden = true;
+    else if (/^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(mail)) { $("fMail").href = "mailto:" + mail; $("fMailText").textContent = mail; col.hidden = false; }
+  }
 }
+
+/* ---------- Ziyaretçi istatistiği (GoatCounter, çerezsiz) ---------- */
+let statsOn = false;
+function startStats() {
+  const code = typeof TEMA === "object" ? String(TEMA.istatistik || "").trim().toLowerCase() : "";
+  if (statsOn || !/^[a-z0-9][a-z0-9-]{1,40}$/.test(code)) return;
+  statsOn = true;
+  const sc = document.createElement("script");
+  sc.async = true; sc.src = "https://gc.zgo.at/count.js"; sc.dataset.goatcounter = `https://${code}.goatcounter.com/count`;
+  document.head.append(sc);
+}
+function track(path, title) {
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: "oyun/" + path, title: title || path, event: true }); } catch (e) {}
+}
+
+/* ---------- Tema seçici ---------- */
+function buildLookMenu() {
+  const menu = $("lookMenu"); menu.innerHTML = "";
+  Object.keys(LOOKS).forEach(k => {
+    const L = LOOKS[k], T = typeof TEMA === "object" ? TEMA : {};
+    const sw = el("span", "sw"); sw.style.background = `linear-gradient(135deg, ${L.night || T.renkArka || "#0d0f14"} 50%, ${L.accent || T.renkVurgu || "#ffd23f"} 50%)`;
+    const b = el("button"); b.type = "button"; b.setAttribute("role", "menuitemradio"); b.setAttribute("aria-checked", String(window.CURRENT_LOOK === k));
+    b.append(sw, L.ad);
+    b.addEventListener("click", () => { applyLook(k); buildLookMenu(); closeLook(); track("tema/" + k, "Tema: " + L.ad); });
+    menu.append(b);
+  });
+}
+function closeLook() { $("lookMenu").hidden = true; $("lookBtn").setAttribute("aria-expanded", "false"); }
+$("lookBtn").addEventListener("click", e => { e.stopPropagation(); const m = $("lookMenu"); if (m.hidden) { buildLookMenu(); m.hidden = false; $("lookBtn").setAttribute("aria-expanded", "true"); } else closeLook(); });
+document.addEventListener("click", e => { if (!$("lookMenu").hidden && !e.target.closest(".lookwrap")) closeLook(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("lookMenu").hidden) closeLook(); });
+
 function renderHomeExtra() {
   applyTema();
   const quick = $("quick"); quick.innerHTML = "";
@@ -460,3 +526,4 @@ window.addEventListener("hashchange", fromHash);
 
 renderHome();
 fromHash();
+startStats();
