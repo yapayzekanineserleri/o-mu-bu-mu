@@ -171,7 +171,7 @@ const $ = id => document.getElementById(id);
 const LS = "omubumu-admin";
 let CFG = { token: "", owner: "yapayzekanineserleri", repo: "o-mu-bu-mu", branch: "main" };
 try { Object.assign(CFG, JSON.parse(localStorage.getItem(LS)) || {}); } catch (e) {}
-const FILES = ["data-anket.js", "data-hizli.js", "data-pair0.js", "data-paketler.js", "data-hikaye.js", "data-tema.js"];
+const FILES = ["data-anket.js", "data-hizli.js", "data-pair0.js", "data-paketler.js", "data-hikaye.js", "data-tema.js", "data-turnuva.js", "data-test.js"];
 let SRC = {}, SHA = {}, D = null, ORIG = "", view = { tab: "tema", sel: null };
 
 const DEFAULT_TEMA = { baslik1: "O mu,", baslik2: "bu mu?", hesap: "@yapayzekanineserleri", altyazi: "anketleri", giris: "", duyuru: "", renkVurgu: "#ffd23f", renkArka: "#0d0f14", renkPanel: "#171a22", renkYazi: "#f4f1ea", renkSoluk: "#9aa0ad", renkCizgi: "#2a2f3b", fontBaslik: "Barlow Condensed", fontMetin: "Onest", turSayisi: 10, instagram: "https://instagram.com/yapayzekanineserleri", youtube: "https://www.youtube.com/@yapayzekanineserlerii", tiktok: "https://www.tiktok.com/@yapayzekanineserlerii", eposta: "yapayzekanineserleri@gmail.com", istatistik: "" };
@@ -200,14 +200,15 @@ async function loadAll() {
       const j = await gh(`contents/${f}?ref=${encodeURIComponent(CFG.branch)}`);
       SRC[f] = b64d(j.content); SHA[f] = j.sha;
     } catch (e) {
-      if (e.status === 404 && f === "data-tema.js") { SRC[f] = ""; SHA[f] = null; continue; }
+      if (e.status === 404 && ["data-tema.js", "data-turnuva.js", "data-test.js"].includes(f)) { SRC[f] = ""; SHA[f] = null; continue; }
       throw e;
     }
   }
   const all = FILES.map(f => SRC[f]).join("\n;\n");
   const g = new Function(all + `
 ;return { RAW: typeof RAW !== "undefined" ? RAW : [], MORE: typeof MORE !== "undefined" ? MORE : {}, QUICK: typeof QUICK !== "undefined" ? QUICK : [],
-  PACKS: typeof PACKS !== "undefined" ? PACKS : [], STORY_RAW: typeof STORY_RAW !== "undefined" ? STORY_RAW : "", TEMA: typeof TEMA !== "undefined" ? TEMA : {} };`)();
+  PACKS: typeof PACKS !== "undefined" ? PACKS : [], STORY_RAW: typeof STORY_RAW !== "undefined" ? STORY_RAW : "", TEMA: typeof TEMA !== "undefined" ? TEMA : {},
+  TURNUVA: typeof TURNUVA !== "undefined" ? TURNUVA : [], TESTLER: typeof TESTLER !== "undefined" ? TESTLER : [] };`)();
   D = toModel(g);
   ORIG = JSON.stringify(D);
 }
@@ -247,7 +248,13 @@ function toModel(g) {
     const pools = (p.pools && p.pools.length ? p.pools : [p.pool || rows.length]).slice();
     return { id: p.id, ch: p.ch, name: p.name, em: p.em, h: p.h, modes: p.modes, fam: !!p.fam, pools, shared: p.opts ? splitOpts(p.opts).map(o => o.e + " " + o.x).join("\n") : "", hasG: rows.some(r => r.g), rows };
   });
-  return { cats, quick, packs, stories: parseStories(g.STORY_RAW), tema: Object.assign({}, DEFAULT_TEMA, g.TEMA || {}) };
+  const brackets = (g.TURNUVA || []).map(b => ({ id: b.id, name: b.name, em: b.em, h: b.h, head: b.head || "", items: splitOpts(b.items) }));
+  const tests = (g.TESTLER || []).map(t => ({
+    id: t.id, name: t.name, em: t.em, h: t.h,
+    results: Object.keys(t.results || {}).map(k => ({ k, t: t.results[k].t, em: t.results[k].em, x: t.results[k].x })),
+    qs: (t.qs || []).map(q => ({ q: q.q, o: q.o.map(o => { const op = splitOpts(o[0])[0] || { e: "🔹", x: o[0] }; return { e: op.e, x: op.x, k: o[1] }; }) }))
+  }));
+  return { cats, quick, packs, stories: parseStories(g.STORY_RAW), tema: Object.assign({}, DEFAULT_TEMA, g.TEMA || {}), brackets, tests };
 }
 /* Metinleri ayraçlarla çakışmayacak hâle getirir */
 const clean = s => String(s == null ? "" : s).replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
@@ -292,6 +299,14 @@ function serialize() {
     return L.join("\n");
   }).join("\n\n");
   out["data-hikaye.js"] = "/* Seçimli hikâyeler. Yönetim panelinden düzenlenir. */\nconst STORY_RAW = " + JSON.stringify(st) + ";\n";
+  const TURNUVA = D.brackets.map(b => ({ id: b.id, name: clean(b.name) || "Turnuva", em: cleanEm(b.em), h: +b.h || 0, head: clean(b.head) || "Hangisi?", items: b.items.filter(i => clean(i.x)).map(i => cleanEm(i.e) + " " + optText(i.x)).join(",") }));
+  out["data-turnuva.js"] = "/* Turnuvalar (eleme). Yönetim panelinden düzenlenir. 16'dan fazla aday varsa her oyunda rastgele 16'sı gelir. */\nconst TURNUVA = " + J(TURNUVA) + ";\n";
+  const TESTLER = D.tests.map(t => {
+    const res = {}; t.results.forEach(r => { if (r.k) res[r.k] = { t: clean(r.t) || "Sonuç", em: cleanEm(r.em), x: clean(r.x) }; });
+    return { id: t.id, name: clean(t.name) || "Test", em: cleanEm(t.em), h: +t.h || 0, results: res,
+      qs: t.qs.filter(q => clean(q.q)).map(q => ({ q: clean(q.q), o: q.o.filter(o => clean(o.x) && res[o.k]).map(o => [cleanEm(o.e) + " " + optText(o.x), o.k]) })) };
+  });
+  out["data-test.js"] = "/* Sonuç testleri. Yönetim panelinden düzenlenir. */\nconst TESTLER = " + J(TESTLER) + ";\n";
   const T = Object.assign({}, D.tema); T.turSayisi = Math.min(30, Math.max(3, +T.turSayisi || 10));
   ["baslik1", "baslik2", "hesap", "altyazi", "giris", "duyuru", "instagram", "youtube", "tiktok", "eposta"].forEach(k => T[k] = clean(T[k]));
   T.istatistik = clean(T.istatistik).toLowerCase().replace(/^https?:\/\//, "").replace(/\.goatcounter\.com.*$/, "");
@@ -314,6 +329,13 @@ function validate() {
     if (p.pools.length >= 30 && n > Math.max(...p.pools)) errs.push(`“${p.name}” paketi en fazla sayıda büyüdü; yeni soruları yeni bir pakete ekle.`);
   });
   D.quick.forEach(c => { if (c.items.filter(i => clean(i.x)).length < 2) errs.push(`“${c.name}” listesinde en az 2 öğe olmalı.`); });
+  D.brackets.forEach(b => { if (b.items.filter(i => clean(i.x)).length < 4) errs.push(`“${b.name}” turnuvasında en az 4 aday olmalı (en iyisi 16).`); });
+  D.tests.forEach(t => {
+    if (t.results.filter(r => clean(r.t)).length < 2) errs.push(`“${t.name}” testinde en az 2 sonuç olmalı.`);
+    const qs = t.qs.filter(q => clean(q.q));
+    if (qs.length < 3) errs.push(`“${t.name}” testinde en az 3 soru olmalı.`);
+    qs.forEach((q, i) => { const ok = q.o.filter(o => clean(o.x) && t.results.some(r => r.k === o.k)); if (ok.length < 2) errs.push(`“${t.name}” testinin ${i + 1}. sorusunda en az 2 şık olmalı ve her şık bir sonuca bağlanmalı.`); });
+  });
   const T = D.tema;
   [["instagram", "Instagram"], ["youtube", "YouTube"], ["tiktok", "TikTok"]].forEach(([k, l]) => { const v = clean(T[k]); if (v && !/^https:\/\/[^\s"'<>]+$/i.test(v)) errs.push(`${l} adresi https:// ile başlamalı (ya da boş bırakılmalı).`); });
   if (clean(T.eposta) && !/^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(clean(T.eposta))) errs.push("E-posta adresi geçerli görünmüyor.");
@@ -374,7 +396,7 @@ async function save() {
     await gh(`git/refs/heads/${encodeURIComponent(CFG.branch)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sha: commit.sha }) });
     changed.forEach(f => { SRC[f] = out[f]; });
     // Kaydedilen hâli yeniden okuyup modeli eşitle (paket havuzları vb. güncellensin)
-    const g = new Function(FILES.map(f => SRC[f]).join("\n;\n") + `;return { RAW, MORE, QUICK, PACKS, STORY_RAW, TEMA: typeof TEMA !== "undefined" ? TEMA : {} };`)();
+    const g = new Function(FILES.map(f => SRC[f]).join("\n;\n") + `;return { RAW, MORE, QUICK, PACKS, STORY_RAW, TEMA: typeof TEMA !== "undefined" ? TEMA : {}, TURNUVA: typeof TURNUVA !== "undefined" ? TURNUVA : [], TESTLER: typeof TESTLER !== "undefined" ? TESTLER : [] };`)();
     D = toModel(g); ORIG = JSON.stringify(D); dirty(); render();
     m.className = "msg ok"; m.textContent = `Kaydedildi (${changed.length} dosya). Site 1-2 dakika içinde güncellenir.`;
   } catch (e) {
@@ -384,10 +406,10 @@ async function save() {
 
 /* ---------- Bölümler ---------- */
 const TABS = [
-  ["tema", "Görünüm"], ["cats", "Konular"], ["quick", "Hızlı seçim"], ["packs", "Çift ve aile paketleri"], ["stories", "Hikâyeler"], ["help", "Yardım"]
+  ["tema", "Görünüm"], ["brackets", "Turnuvalar"], ["tests", "Sonuç testleri"], ["cats", "Konular"], ["quick", "Hızlı seçim"], ["packs", "Çift ve aile paketleri"], ["stories", "Hikâyeler"], ["help", "Yardım"]
 ];
 function refreshNavCounts() {
-  const n = { cats: D.cats.reduce((s, c) => s + c.qs.length, 0), quick: D.quick.length, packs: D.packs.length, stories: D.stories.length };
+  const n = { cats: D.cats.reduce((s, c) => s + c.qs.length, 0), quick: D.quick.length, packs: D.packs.length, stories: D.stories.length, brackets: D.brackets.length, tests: D.tests.length };
   document.querySelectorAll("#nav button").forEach(b => { const s = b.querySelector("small"); if (s) s.textContent = n[b.dataset.tab] != null ? n[b.dataset.tab] : ""; });
 }
 function renderNav() {
@@ -399,7 +421,7 @@ function head(title, desc, ...right) { return el("div", { class: "head" }, el("d
 function render() {
   renderNav();
   const m = $("main"); m.innerHTML = "";
-  ({ tema: viewTema, cats: viewCats, quick: viewQuick, packs: viewPacks, stories: viewStories, help: viewHelp })[view.tab](m);
+  ({ tema: viewTema, brackets: viewBrackets, tests: viewTests, cats: viewCats, quick: viewQuick, packs: viewPacks, stories: viewStories, help: viewHelp })[view.tab](m);
   window.scrollTo(0, 0);
 }
 
@@ -557,6 +579,83 @@ function viewPacks(m) {
   draw();
   m.append(el("div", { class: "card" }, el("h3", { text: "Sorular", style: "margin-bottom:6px" }), list,
     el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { p.rows.push({ s: "", g: "", o: "" }); dirty(); draw(); list.lastChild.querySelector("input,textarea").focus(); } }, "+ Soru ekle"))));
+}
+
+/* Turnuvalar */
+function viewBrackets(m) {
+  if (view.sel == null) {
+    m.append(head("Turnuvalar", "Her turnuvada 16 aday eleme usulü yarışır. 16'dan fazla aday eklersen her oyunda rastgele 16'sı gelir; böylece turnuva her seferinde farklı oynanır."));
+    const g = el("div", { class: "grid" });
+    D.brackets.forEach((b, i) => g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(b.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: b.em }), el("b", { text: b.name }), el("small", { text: `${b.items.length} aday` }))));
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => { D.brackets.push({ id: slug("turnuva"), name: "Yeni turnuva", em: "🏆", h: Math.floor(Math.random() * 360), head: "Hangisi daha iyi?", items: [{ e: "🔹", x: "" }, { e: "🔹", x: "" }, { e: "🔹", x: "" }, { e: "🔹", x: "" }] }); view.sel = D.brackets.length - 1; dirty(); render(); } }, "+ Yeni turnuva"));
+    m.append(g); return;
+  }
+  const b = D.brackets[view.sel], list = el("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  m.append(head(b.name, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Turnuvalar"),
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Emin misin? Tekrar bas", () => { D.brackets.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Turnuvayı sil")));
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" }, field("Turnuva adı", inp(b, "name")), el("label", { class: "f" }, "Emoji", inp(b, "em", { em: true })), field("Soru başlığı", inp(b, "head", { ph: "Hangisi daha iyi?" })), field("Renk tonu (0-360)", inp(b, "h", { type: "number" })))));
+  const count = el("span", { class: "small muted" });
+  const upd = () => { const n = b.items.filter(i => clean(i.x)).length; count.textContent = n > 16 ? `${n} aday · her oyunda rastgele 16'sı` : n === 16 ? "16 aday · 16'lı eleme" : n >= 8 ? `${n} aday · 8'li eleme oynanır (16'ya tamamlarsan 16'lı olur)` : `${n} aday · en az 8 önerilir`; };
+  const draw = () => {
+    list.innerHTML = "";
+    b.items.forEach((it, i) => list.append(el("div", { class: "irow" }, inp(it, "e", { em: true, label: "Emoji" }), inp(it, "x", { ph: "Aday adı", after: upd }),
+      el("button", { class: "x", type: "button", "aria-label": "Adayı sil", onclick: () => { b.items.splice(i, 1); dirty(); draw(); upd(); } }, "×"))));
+  };
+  draw(); upd();
+  m.append(el("div", { class: "card" }, el("div", { class: "row", style: "justify-content:space-between;margin-bottom:10px" }, el("h3", { text: "Adaylar" }), count), list,
+    el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { b.items.push({ e: b.items[0] ? b.items[0].e : "🔹", x: "" }); dirty(); draw(); upd(); list.lastChild.querySelectorAll("input")[1].focus(); } }, "+ Aday ekle"))));
+}
+
+/* Sonuç testleri */
+function viewTests(m) {
+  if (view.sel == null) {
+    m.append(head("Sonuç testleri", "“Hangi Osmanlı karakterisin?” gibi testler. Her şık bir sonuca puan verir; en çok puan alan sonuç gösterilir."));
+    const g = el("div", { class: "grid" });
+    D.tests.forEach((t, i) => g.append(el("button", { class: "tile", type: "button", style: `background:${hueBg(t.h)}`, onclick: () => { view.sel = i; render(); } }, el("span", { class: "em", text: t.em }), el("b", { text: t.name }), el("small", { text: `${t.qs.length} soru · ${t.results.length} sonuç` }))));
+    g.append(el("button", { class: "tile add", type: "button", onclick: () => {
+      const rs = ["a", "b", "c", "d"].map((k, i) => ({ k: "s" + Math.random().toString(36).slice(2, 6), t: `Sonuç ${i + 1}`, em: "✨", x: "" }));
+      D.tests.push({ id: slug("test"), name: "Hangi … sin?", em: "🔮", h: Math.floor(Math.random() * 360), results: rs, qs: [0, 1, 2].map(() => ({ q: "", o: rs.map(r => ({ e: "🔹", x: "", k: r.k })) })) });
+      view.sel = D.tests.length - 1; dirty(); render();
+    } }, "+ Yeni test"));
+    m.append(g); return;
+  }
+  const t = D.tests[view.sel];
+  m.append(head(t.name, null, el("button", { class: "btn", type: "button", onclick: () => { view.sel = null; render(); } }, "‹ Testler"),
+    el("button", { class: "btn danger", type: "button", onclick: e => confirmInline(e.currentTarget, "Emin misin? Tekrar bas", () => { D.tests.splice(view.sel, 1); view.sel = null; dirty(); render(); }) }, "Testi sil")));
+  m.append(el("div", { class: "card" }, el("div", { class: "fields" }, field("Test adı", inp(t, "name")), el("label", { class: "f" }, "Emoji", inp(t, "em", { em: true })), field("Renk tonu (0-360)", inp(t, "h", { type: "number" })))));
+  // results
+  const rlist = el("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const drawR = () => {
+    rlist.innerHTML = "";
+    t.results.forEach((r, i) => rlist.append(el("div", { class: "scene" },
+      el("div", { class: "row" }, inp(r, "em", { em: true, label: "Sonuç emojisi" }), Object.assign(inp(r, "t", { ph: "Sonuç adı, örn. Fatih Sultan Mehmet", after: () => drawQ() }), { style: "flex:1" }),
+        el("button", { class: "x", type: "button", disabled: t.results.length <= 2, "aria-label": "Sonucu sil", onclick: () => { t.results.splice(i, 1); t.qs.forEach(q => q.o.forEach(o => { if (o.k === r.k) o.k = t.results[0].k; })); dirty(); drawR(); drawQ(); } }, "×")),
+      field("Açıklama (sonuç ekranında görünür)", inp(r, "x", { area: true, rows: 2 })))));
+  };
+  // questions
+  const qlist = el("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const drawQ = () => {
+    qlist.innerHTML = "";
+    t.qs.forEach((q, qi) => {
+      const box = el("div", { class: "scene" }, el("div", { class: "row" }, el("b", { text: `${qi + 1}.` }), Object.assign(inp(q, "q", { ph: "Soru" }), { style: "flex:1" }),
+        el("button", { class: "x", type: "button", "aria-label": "Soruyu sil", onclick: () => { t.qs.splice(qi, 1); dirty(); drawQ(); } }, "×")));
+      q.o.forEach((o, oi) => {
+        const sel = el("select", { class: "i", "aria-label": "Bu şık hangi sonuca puan verir?" });
+        t.results.forEach(r => sel.append(el("option", { value: r.k, text: "→ " + (clean(r.t) || "Sonuç"), selected: o.k === r.k })));
+        sel.addEventListener("change", () => { o.k = sel.value; dirty(); });
+        box.append(el("div", { class: "irow", style: "grid-template-columns:56px minmax(0,1fr) minmax(120px,.7fr) 30px" }, inp(o, "e", { em: true, label: "Emoji" }), inp(o, "x", { ph: `${oi + 1}. şık` }), sel,
+          el("button", { class: "x", type: "button", disabled: q.o.length <= 2, "aria-label": "Şıkkı sil", onclick: () => { q.o.splice(oi, 1); dirty(); drawQ(); } }, "×")));
+      });
+      if (q.o.length < 6) box.append(el("div", {}, el("button", { class: "btn sm", type: "button", onclick: () => { q.o.push({ e: "🔹", x: "", k: t.results[0].k }); dirty(); drawQ(); } }, "+ Şık ekle")));
+      qlist.append(box);
+    });
+  };
+  drawR(); drawQ();
+  m.append(el("div", { class: "card" }, el("h3", { text: "Sonuçlar", style: "margin-bottom:10px" }), rlist,
+      el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { t.results.push({ k: "s" + Math.random().toString(36).slice(2, 6), t: "", em: "✨", x: "" }); dirty(); drawR(); drawQ(); } }, "+ Sonuç ekle"))),
+    el("div", { class: "note small", text: "Her sonucun eşit şansla çıkması için her sonucu yaklaşık aynı sayıda şıkka bağla. Örneğin 8 soru, 4'er şık ve 6 sonuç varsa her sonuç 5-6 şıkta geçmeli." }),
+    el("div", { class: "card" }, el("h3", { text: "Sorular", style: "margin-bottom:10px" }), qlist,
+      el("div", { class: "row", style: "margin-top:10px" }, el("button", { class: "btn", type: "button", onclick: () => { t.qs.push({ q: "", o: t.results.slice(0, 4).map(r => ({ e: "🔹", x: "", k: r.k })) }); dirty(); drawQ(); } }, "+ Soru ekle"))));
 }
 
 /* Hikâyeler */

@@ -521,6 +521,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("lookMe
 
 function renderHomeExtra() {
   applyTema();
+  if (typeof renderGames === "function") renderGames();
   const quick = $("quick"); quick.innerHTML = "";
   QCATS.forEach(c => {
     const n = c.qs.filter(q => store.ans[q.id]).length;

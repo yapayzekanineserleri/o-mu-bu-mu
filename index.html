@@ -8,7 +8,7 @@
 <title>O mu Bu mu Anketleri</title>
 <meta name="description" content="O mu, bu mu? Binlerce ikilem, çiftler ve aileler için kodla oynanan oyunlar, seçimlerine göre ilerleyen hikâyeler.">
 <meta name="theme-color" content="#0d0f14">
-<link rel="manifest" href="manifest.webmanifest?v=20261113c">
+<link rel="manifest" href="manifest.webmanifest?v=20261113d">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -229,6 +229,14 @@ button.ptile:hover { transform: translateY(-3px); }
 .light .qwho, .light .quiz.storymode h2, .light .stext .out { filter: brightness(.62) saturate(1.2); }
 .light .result h2 { filter: brightness(.68) saturate(1.2); }
 .light .story, .light .teaser { box-shadow: 0 24px 50px rgba(0,0,0,.18); }
+.secnote { margin: -6px 0 14px; color: var(--muted); font-size: 15px; max-width: 70ch; }
+.opts.vs { grid-template-columns: 1fr 1fr; gap: 14px; position: relative; }
+.opts.vs::after { content: "VS"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--night); border: 2px solid var(--sticker); color: var(--ink); font: 800 18px var(--font-display); pointer-events: none; }
+.opt.big { flex-direction: column; justify-content: center; text-align: center; gap: 10px; min-height: 200px; padding: 18px 12px; font-size: 19px; }
+.opt.big span { font-size: 58px; }
+.opt.big b { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: 24px; line-height: 1.05; text-wrap: balance; overflow-wrap: anywhere; }
+.rows .pbar { display: block; height: 6px; border-radius: 3px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.rows .pbar i { display: block; height: 100%; background: var(--sticker); border-radius: 3px; }
 .baracts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
 .chip:hover { border-color: var(--muted); }
@@ -261,6 +269,10 @@ button.ptile:hover { transform: translateY(-3px); }
   .cats.small .cat b { font-size: 17px; }
   .cat .ends { top: 8px; right: 8px; font-size: 10px; }
   .opts { grid-template-columns: 1fr; }
+  .opts.vs { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .opt.big { min-height: 160px; padding: 14px 8px; }
+  .opt.big span { font-size: 46px; }
+  .opt.big b { font-size: 19px; }
   .opt { min-height: 54px; padding: 11px 14px; }
   .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 18px; }
   .modes { grid-template-columns: 1fr; }
@@ -269,7 +281,7 @@ button.ptile:hover { transform: translateY(-3px); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-<script src="data-tema.js?v=20261113c"></script>
+<script src="data-tema.js?v=20261113d"></script>
 <script>
 /* Görünüm: sitenin varsayılanı yönetim panelindeki TEMA'dan gelir; ziyaretçi isterse kendi temasını seçer. */
 var LOOKS = {
@@ -345,7 +357,14 @@ function applyLook(name) {
     </button>
   </section>
 
-  <div class="section-head"><h2>Çiftler, aile ve arkadaşlar</h2><span>Herkes kendi telefonunda, kodla</span></div>
+  <div class="section-head"><h2>Turnuvalar</h2><span id="brCount"></span></div>
+  <p class="secnote">16 aday, tek şampiyon. Dizilerden yemeklere, şarkıcılardan padişahlara: her eşleşmede birini seç, sonunda senin şampiyonun çıksın.</p>
+  <div class="cats" id="brackets"></div>
+
+  <div class="section-head" style="margin-top:34px"><h2>Sonuç testleri</h2><span id="tsCount"></span></div>
+  <div class="cats" id="tests"></div>
+
+  <div class="section-head" style="margin-top:34px"><h2>Çiftler, aile ve arkadaşlar</h2><span>Herkes kendi telefonunda, kodla</span></div>
   <div class="pair">
     <button class="ptile know" type="button" id="pairT"><span class="em">💞</span><b>Beni ne kadar tanıyor?</b><small>Bir konu paketi seç, 12 soruyu kendin için cevapla, kodu gönder. O senin cevaplarını tahmin etsin.</small></button>
     <button class="ptile match" type="button" id="pairU"><span class="em">🧩</span><b>Uyum testi</b><small>İkiniz de kendiniz için cevaplayın. Her pakette farklı sorular: kaçı aynı?</small></button>
@@ -468,11 +487,11 @@ function applyLook(name) {
   </div>
 </section>
 
-<script src="data-anket.js?v=20261113c"></script>
-<script src="data-hizli.js?v=20261113c"></script>
-<script src="data-pair0.js?v=20261113c"></script>
-<script src="data-paketler.js?v=20261113c"></script>
-<script src="data-hikaye.js?v=20261113c"></script>
+<script src="data-anket.js?v=20261113d"></script>
+<script src="data-hizli.js?v=20261113d"></script>
+<script src="data-pair0.js?v=20261113d"></script>
+<script src="data-paketler.js?v=20261113d"></script>
+<script src="data-hikaye.js?v=20261113d"></script>
 <script>
 const opt = s => { s = s.trim(); const j = s.indexOf(" "); return { e: s.slice(0, j), x: s.slice(j + 1) }; };
 const CATS = RAW.map(c => {
@@ -764,6 +783,9 @@ $("toHome").addEventListener("click", goHome);
 
 
 </script>
-<script src="app2.js?v=20261113c"></script>
+<script src="data-turnuva.js?v=20261113d"></script>
+<script src="data-test.js?v=20261113d"></script>
+<script src="app2.js?v=20261113d"></script>
+<script src="app3.js?v=20261113d"></script>
 </body>
 </html>
